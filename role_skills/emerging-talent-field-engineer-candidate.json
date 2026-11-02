@@ -1,0 +1,91 @@
+{
+  "role": "Emerging Talent Field Engineer Candidate",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-20",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Network Troubleshooting",
+        "Field Service",
+        "RF Engineering",
+        "Fiber Optics",
+        "Wireless Communication",
+        "Network Installation",
+        "Technical Support",
+        "Cisco IOS",
+        "Juniper OS",
+        "Linux"
+      ],
+      "preferred_skills": [
+        "Spectrum Analyzers",
+        "OTDR",
+        "Network Protocols",
+        "Data Analysis",
+        "Documentation"
+      ]
+    },
+    {
+      "required_skills": [
+        "Troubleshooting",
+        "Technical Support",
+        "Field Service",
+        "System Installation",
+        "Hardware Diagnostics",
+        "Software Configuration",
+        "Network Protocols",
+        "Preventative Maintenance",
+        "Customer Service",
+        "Documentation"
+      ],
+      "preferred_skills": [
+        "Calibration",
+        "Testing Procedures",
+        "Remote Support",
+        "Safety Protocols",
+        "Inventory Management",
+        "SQL",
+        "Linux",
+        "Windows OS"
+      ]
+    },
+    {
+      "required_skills": [
+        "Field Service",
+        "Troubleshooting",
+        "Technical Support",
+        "Hardware Installation",
+        "Software Installation",
+        "System Diagnostics",
+        "Network Configuration",
+        "Preventive Maintenance",
+        "Customer Service",
+        "Documentation"
+      ],
+      "preferred_skills": [
+        "Remote Support",
+        "On-site Support",
+        "Repair",
+        "Calibration",
+        "Testing",
+        "Ticketing Systems",
+        "SOP Adherence"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "entry",
+      "field": "telecommunications engineering"
+    },
+    {
+      "seniority": "entry",
+      "field": "engineering"
+    },
+    {
+      "seniority": "entry",
+      "field": "engineering"
+    }
+  ]
+}

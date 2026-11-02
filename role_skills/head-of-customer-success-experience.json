@@ -1,0 +1,95 @@
+{
+  "role": "Head of Customer Success & Experience",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-19",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Customer Success Strategy",
+        "Customer Experience Strategy",
+        "SaaS",
+        "Churn Reduction",
+        "Customer Retention",
+        "Customer Lifecycle Management",
+        "Team Leadership",
+        "P&L Management",
+        "CRM Software",
+        "Customer Journey Mapping"
+      ],
+      "preferred_skills": [
+        "Voice of Customer",
+        "Customer Advocacy",
+        "Net Promoter Score",
+        "Customer Onboarding",
+        "Cross-functional Collaboration",
+        "Budget Management",
+        "Service Level Agreements",
+        "Customer Relationship Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Customer Success Strategy",
+        "Customer Experience Strategy",
+        "SaaS Metrics",
+        "Churn Reduction",
+        "Customer Lifecycle Management",
+        "CRM Software",
+        "Customer Journey Mapping",
+        "Team Leadership",
+        "Budget Management",
+        "P&L Management"
+      ],
+      "preferred_skills": [
+        "Voice of Customer",
+        "Customer Advocacy Programs",
+        "Cross-functional Collaboration",
+        "Service Level Agreements",
+        "Product Adoption",
+        "Customer Onboarding",
+        "Data Analysis",
+        "Vendor Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Customer Success Strategy",
+        "Customer Experience Strategy",
+        "SaaS Metrics",
+        "Churn Reduction",
+        "Customer Lifecycle Management",
+        "CRM Software",
+        "Customer Journey Mapping",
+        "Team Leadership",
+        "Budget Management",
+        "P&L Management"
+      ],
+      "preferred_skills": [
+        "Voice of Customer",
+        "Customer Advocacy Programs",
+        "Cross-functional Collaboration",
+        "Service Level Agreements",
+        "Product Adoption",
+        "Customer Onboarding",
+        "Data Analysis",
+        "Vendor Management"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "director or head",
+      "field": "customer relations"
+    },
+    {
+      "seniority": "director or head",
+      "field": "customer experience management"
+    },
+    {
+      "seniority": "director or head",
+      "field": "customer experience management"
+    }
+  ]
+}

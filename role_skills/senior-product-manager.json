@@ -1,0 +1,96 @@
+{
+  "role": "Senior Product Manager",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Product Strategy",
+        "Roadmap Development",
+        "Market Research",
+        "User Stories",
+        "Agile Methodologies",
+        "Product Lifecycle Management",
+        "Feature Prioritization",
+        "Competitive Analysis",
+        "Stakeholder Management",
+        "Data Analysis"
+      ],
+      "preferred_skills": [
+        "A/B Testing",
+        "SQL",
+        "Jira",
+        "Confluence",
+        "Go-to-Market Strategy",
+        "UX Design Principles",
+        "Scrum",
+        "API Design"
+      ]
+    },
+    {
+      "required_skills": [
+        "Product Strategy",
+        "Roadmap Development",
+        "Market Research",
+        "User Stories",
+        "Agile Methodologies",
+        "Product Lifecycle Management",
+        "Feature Prioritization",
+        "Competitive Analysis",
+        "Stakeholder Management",
+        "Data Analysis"
+      ],
+      "preferred_skills": [
+        "A/B Testing",
+        "SQL",
+        "Jira",
+        "Confluence",
+        "Go-to-Market Strategy",
+        "UX Design Principles",
+        "Scrum",
+        "API Design"
+      ]
+    },
+    {
+      "required_skills": [
+        "Product Strategy",
+        "Roadmap Development",
+        "Market Research",
+        "User Stories",
+        "Agile Methodologies",
+        "Product Lifecycle Management",
+        "Feature Prioritization",
+        "Competitive Analysis",
+        "Stakeholder Management",
+        "Data Analysis"
+      ],
+      "preferred_skills": [
+        "A/B Testing",
+        "SQL",
+        "Jira",
+        "Confluence",
+        "Go-to-Market Strategy",
+        "UX Design Principles",
+        "Scrum",
+        "API Design"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "senior",
+      "field": "product management"
+    },
+    {
+      "seniority": "senior",
+      "field": "product management"
+    },
+    {
+      "seniority": "senior",
+      "field": "product management"
+    }
+  ]
+}

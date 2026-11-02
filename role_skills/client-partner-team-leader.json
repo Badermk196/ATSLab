@@ -1,0 +1,94 @@
+{
+  "role": "Client Partner / Team Leader",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-20",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Client Relationship Management",
+        "Account Growth",
+        "Strategic Planning",
+        "Team Leadership",
+        "P&L Management",
+        "Budget Management",
+        "Negotiation",
+        "Sales Strategy",
+        "Service Delivery",
+        "Performance Metrics"
+      ],
+      "preferred_skills": [
+        "Contract Management",
+        "Cross-functional Collaboration",
+        "Market Analysis",
+        "CRM Software",
+        "Project Management",
+        "Client Retention",
+        "Business Development"
+      ]
+    },
+    {
+      "required_skills": [
+        "Client Relationship Management",
+        "Account Growth",
+        "Strategic Planning",
+        "Team Leadership",
+        "P&L Management",
+        "Budget Management",
+        "Contract Negotiation",
+        "Service Delivery",
+        "Client Retention",
+        "Business Development"
+      ],
+      "preferred_skills": [
+        "Stakeholder Management",
+        "Performance Metrics",
+        "Sales Forecasting",
+        "CRM Software",
+        "Project Management",
+        "Cross-functional Collaboration",
+        "Risk Management",
+        "Solution Selling"
+      ]
+    },
+    {
+      "required_skills": [
+        "Client Relationship Management",
+        "Account Growth",
+        "Strategic Planning",
+        "Team Leadership",
+        "P&L Management",
+        "Budget Management",
+        "Contract Negotiation",
+        "Service Delivery",
+        "Client Retention",
+        "Business Development"
+      ],
+      "preferred_skills": [
+        "Stakeholder Management",
+        "Performance Metrics",
+        "Sales Forecasting",
+        "CRM Software",
+        "Project Management",
+        "Cross-functional Collaboration",
+        "Risk Management",
+        "Market Analysis"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "lead",
+      "field": "client services"
+    },
+    {
+      "seniority": "lead",
+      "field": "client services"
+    },
+    {
+      "seniority": "lead",
+      "field": "client services"
+    }
+  ]
+}

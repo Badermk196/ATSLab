@@ -1,0 +1,27 @@
+{
+  "_about": "SHA-256 of files v3 must never change: the v2 Lab and the original v2 keyword files. Recorded on 2026-10-13 (v2 copies unchanged since Oct 1; keyword files dated Oct 1-9). Checked by test_ATSLab_v3.TestProtectedFiles.",
+  "files": {
+    "ATSLab.py": "07bf9e10727cf214484710c70124c5cccdfaf16cdb78358e36773a536bd52651",
+    "ATSLab_v2_frozen.py": "07bf9e10727cf214484710c70124c5cccdfaf16cdb78358e36773a536bd52651",
+    "JobDe/AllanAbbas_Revolut_keywords.json": "ab6b7296f874918c2c304afbe6b98fc393520a57c304a5c6bc8230fe9bfaf36b",
+    "JobDe/JanaSayed_BakerHughes_keywords.json": "05561f7bf778eb77464b40d2bfa7c4747c21ce61a28c6b89358049cac99a74d6",
+    "JobDe/JibranKonkar_AmzoneInternationalLimited_keywords.json": "0b9bee10dc0cec798ce2762d81e183c3274bc58aea73b92b6737f9a125f21df2",
+    "JobDe/MathewOsama_Jobgether_keywords.json": "b9b1ff08cd86b2d15f036b871c662ee6c10fbd4d20fa71b291fb5a28a30629be",
+    "JobDe/MohamedIrfan_Deloitte_keywords.json": "9eb29c948c42a48b12549bf4b0ac44c195425f791bc6c200701f0799cf55a8d9",
+    "JobDe/NedaSefati_Creatio_keywords.json": "8d34f95c830f693b2e8c156b2733623ce5761741df06b86b98eac2041ec0b87e",
+    "JobDe/Tammam_Versuni_keywords.json": "0a0dd0975e2fa03039102b59b100235e4e23610ac4cb8010e8e45c8769c907d5",
+    "JobDe/eliasgk_tactical_keywords.json": "6ec1c885cdb547f1d67af6802c4918ef059002f858c32f62f21b1f90726bcc87",
+    "JobDe/rashaadnmohammed_Cohere_keywords.json": "1afc43798bb629f492e9d4509504cfc72cbbc6b272170a8958a0294d492b5e4d",
+    "JobDe/suzygamal_SuperBridgeSummitDubai_keywords.json": "0ecb391a811ba4563dbeb44bbb57a5c29b11354de90f139655a6af760dd995ac",
+    "competitorcvs/1000Jobs_Immersive_keywords.json": "c501b17ef03fb09d6d73ec0240b8b354ac352464872949ab1d556b39025fcd22",
+    "competitorcvs/aiApply_Immersive_keywords.json": "c501b17ef03fb09d6d73ec0240b8b354ac352464872949ab1d556b39025fcd22",
+    "shikhatest/Shikha_BlackStone_keywords.json": "e13e4557a78e8460f27eb41dd3e2e9252cf66e8cd9f557c1f116de42e98937d5",
+    "shikhatest/Shikha_Chanel_keywords.json": "36b8f78b86dadc7d4f227c039d34978853755522871f69d359de9dc3b1b77c95",
+    "shikhatest/Shikha_EtihadNew_keywords.json": "bfe931f763baa4bf8acd433dd1ec23940402bf2bc94c3a9a820d68b4413ebdec",
+    "shikhatest/Shikha_Etihad_keywords.json": "bfe931f763baa4bf8acd433dd1ec23940402bf2bc94c3a9a820d68b4413ebdec",
+    "shikhatest/Shikha_TalabatNew_keywords.json": "fcbbdb779b3886f0e09ff3d2a9f3d7332a8ef88ef1b62c6c40491a6b04707f67",
+    "shikhatest/Shikha_Talabat_keywords.json": "fcbbdb779b3886f0e09ff3d2a9f3d7332a8ef88ef1b62c6c40491a6b04707f67",
+    "tariqtest/Tareq_Claude_keywords.json": "589fb1b6bc37b241f6927a6a1d333548bc25c5a8a8be7dfb30dc71b830e5e17b",
+    "tariqtest/Tareq_Gemini_keywords.json": "589fb1b6bc37b241f6927a6a1d333548bc25c5a8a8be7dfb30dc71b830e5e17b"
+  }
+}

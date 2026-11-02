@@ -1,0 +1,96 @@
+{
+  "role": "WordPress WooCommerce Full-Stack Developer",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "WordPress Development",
+        "WooCommerce",
+        "PHP",
+        "JavaScript",
+        "HTML5",
+        "CSS3",
+        "MySQL",
+        "REST API",
+        "Git",
+        "Theme Development"
+      ],
+      "preferred_skills": [
+        "Plugin Development",
+        "Payment Gateway Integration",
+        "SEO Optimization",
+        "Performance Optimization",
+        "Security Best Practices",
+        "React",
+        "Vue.js",
+        "Linux Server Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "WordPress Development",
+        "WooCommerce",
+        "PHP",
+        "JavaScript",
+        "HTML5",
+        "CSS3",
+        "MySQL",
+        "REST API",
+        "Git",
+        "Theme Development"
+      ],
+      "preferred_skills": [
+        "Plugin Development",
+        "Payment Gateway Integration",
+        "SEO Optimization",
+        "Performance Optimization",
+        "Security Best Practices",
+        "React",
+        "Vue.js",
+        "Linux Server Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "WordPress Development",
+        "WooCommerce",
+        "PHP",
+        "JavaScript",
+        "HTML",
+        "CSS",
+        "MySQL",
+        "REST APIs",
+        "Git",
+        "Plugin Development"
+      ],
+      "preferred_skills": [
+        "Theme Development",
+        "React",
+        "Vue.js",
+        "Gutenberg Blocks",
+        "Payment Gateway Integration",
+        "SEO Best Practices",
+        "Performance Optimization",
+        "Security Hardening"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "Web Development"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Web Development"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "web development"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "role": "IT Audit Intern Candidate",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-20",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "IT Audit",
+        "Risk Assessment",
+        "Internal Controls",
+        "Compliance Auditing",
+        "Data Analysis",
+        "Audit Documentation",
+        "SQL",
+        "Microsoft Excel",
+        "Cybersecurity Principles",
+        "Networking Fundamentals"
+      ],
+      "preferred_skills": [
+        "Information Security",
+        "Sarbanes-Oxley Act",
+        "COBIT",
+        "NIST Framework",
+        "Vulnerability Assessment",
+        "Access Control",
+        "Cloud Security",
+        "Operating Systems",
+        "Database Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "IT Audit",
+        "Risk Assessment",
+        "Internal Controls",
+        "Compliance Auditing",
+        "Data Analysis",
+        "Sarbanes-Oxley",
+        "COBIT",
+        "NIST Framework",
+        "Audit Documentation",
+        "Microsoft Excel"
+      ],
+      "preferred_skills": [
+        "SQL",
+        "Cybersecurity Principles",
+        "Network Security",
+        "Operating Systems",
+        "Cloud Security"
+      ]
+    },
+    {
+      "required_skills": [
+        "IT Audit",
+        "Risk Assessment",
+        "Internal Controls",
+        "Compliance Auditing",
+        "Data Analysis",
+        "Audit Documentation",
+        "SQL",
+        "Microsoft Excel",
+        "Cybersecurity Principles",
+        "Networking Fundamentals"
+      ],
+      "preferred_skills": [
+        "Information Security",
+        "Sarbanes-Oxley Act",
+        "COBIT",
+        "NIST Framework",
+        "Vulnerability Assessment",
+        "Access Control",
+        "Cloud Security",
+        "Operating Systems",
+        "Database Management"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "intern",
+      "field": "IT Audit"
+    },
+    {
+      "seniority": "intern",
+      "field": "IT Audit"
+    },
+    {
+      "seniority": "intern",
+      "field": "IT Audit"
+    }
+  ]
+}

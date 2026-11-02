@@ -1,0 +1,95 @@
+{
+  "role": "Commercial Growth",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-19",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Market Research",
+        "Sales Strategy",
+        "Business Development",
+        "CRM Software",
+        "Financial Modeling",
+        "Data Analysis",
+        "Negotiation",
+        "Go-to-Market Strategy",
+        "Revenue Growth",
+        "Partnership Development"
+      ],
+      "preferred_skills": [
+        "Product Launch",
+        "Competitive Analysis",
+        "Customer Acquisition",
+        "Pricing Strategy",
+        "Sales Forecasting",
+        "SQL",
+        "Tableau",
+        "Power BI"
+      ]
+    },
+    {
+      "required_skills": [
+        "Market Analysis",
+        "Business Development",
+        "Sales Strategy",
+        "Revenue Growth",
+        "P&L Management",
+        "Financial Modeling",
+        "Pricing Strategy",
+        "Go-to-Market Strategy",
+        "CRM Software",
+        "Data Analysis"
+      ],
+      "preferred_skills": [
+        "Partnership Development",
+        "Product Launch",
+        "Competitive Analysis",
+        "Customer Acquisition",
+        "Forecasting",
+        "SQL",
+        "Tableau",
+        "Power BI"
+      ]
+    },
+    {
+      "required_skills": [
+        "Market Analysis",
+        "Business Development",
+        "Sales Strategy",
+        "Revenue Growth",
+        "P&L Management",
+        "Financial Modeling",
+        "Pricing Strategy",
+        "Go-to-Market Strategy",
+        "CRM Software",
+        "Data Analysis"
+      ],
+      "preferred_skills": [
+        "Partnership Development",
+        "Product Launch",
+        "Competitive Analysis",
+        "Customer Acquisition",
+        "Forecasting",
+        "SQL",
+        "Tableau",
+        "Power BI"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "business development"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Commercial Strategy"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Commercial Strategy"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "role": "Media Director",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Media Strategy",
+        "Media Planning",
+        "Budget Management",
+        "P&L Management",
+        "Team Leadership",
+        "Client Management",
+        "Agency Management",
+        "Media Buying",
+        "Performance Marketing",
+        "Campaign Optimization"
+      ],
+      "preferred_skills": [
+        "Digital Media",
+        "Traditional Media",
+        "Data Analysis",
+        "Market Research",
+        "Vendor Negotiation",
+        "Ad Tech Platforms",
+        "Cross-Channel Marketing",
+        "Media Analytics"
+      ]
+    },
+    {
+      "required_skills": [
+        "Media Strategy",
+        "Media Planning",
+        "Budget Management",
+        "P&L Management",
+        "Team Leadership",
+        "Client Management",
+        "Agency Management",
+        "Media Buying",
+        "Performance Marketing",
+        "Campaign Optimization"
+      ],
+      "preferred_skills": [
+        "Digital Media",
+        "Traditional Media",
+        "Data Analysis",
+        "Market Research",
+        "Vendor Negotiation",
+        "Ad Tech Platforms",
+        "Cross-Channel Marketing",
+        "Media Analytics"
+      ]
+    },
+    {
+      "required_skills": [
+        "Media Strategy",
+        "Media Planning",
+        "Budget Management",
+        "P&L Management",
+        "Team Leadership",
+        "Client Management",
+        "Agency Management",
+        "Media Buying",
+        "Performance Marketing",
+        "Campaign Optimization"
+      ],
+      "preferred_skills": [
+        "Digital Media",
+        "Traditional Media",
+        "Data Analysis",
+        "Market Research",
+        "Vendor Negotiation",
+        "Ad Tech Platforms",
+        "Cross-Channel Marketing",
+        "Media Analytics"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "director or head",
+      "field": "media agency"
+    },
+    {
+      "seniority": "director or head",
+      "field": "media agency"
+    },
+    {
+      "seniority": "director or head",
+      "field": "media agency"
+    }
+  ]
+}

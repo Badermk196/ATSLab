@@ -1,0 +1,96 @@
+{
+  "role": "Marketing Manager",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Digital Marketing",
+        "Content Marketing",
+        "SEO",
+        "SEM",
+        "Social Media Marketing",
+        "Email Marketing",
+        "Google Analytics",
+        "CRM Software"
+      ],
+      "preferred_skills": [
+        "Market Research",
+        "Budget Management",
+        "Brand Management",
+        "Marketing Automation",
+        "Lead Generation",
+        "Performance Marketing",
+        "A/B Testing",
+        "Copywriting"
+      ]
+    },
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Digital Marketing",
+        "Content Marketing",
+        "SEO",
+        "SEM",
+        "Social Media Marketing",
+        "Email Marketing",
+        "Google Analytics",
+        "Market Research"
+      ],
+      "preferred_skills": [
+        "CRM Software",
+        "Marketing Automation",
+        "Budget Management",
+        "Performance Analysis",
+        "Brand Management",
+        "Product Marketing",
+        "Lead Generation",
+        "A/B Testing"
+      ]
+    },
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Digital Marketing",
+        "Content Marketing",
+        "SEO",
+        "SEM",
+        "Social Media Marketing",
+        "Email Marketing",
+        "Google Analytics",
+        "CRM Software"
+      ],
+      "preferred_skills": [
+        "Market Research",
+        "Budget Management",
+        "Brand Management",
+        "Marketing Automation",
+        "Lead Generation",
+        "Performance Marketing",
+        "A/B Testing",
+        "Copywriting"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "Marketing Management"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Marketing Management"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Marketing Management"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "role": "Software Engineering Intern",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Python",
+        "Java",
+        "C++",
+        "Data Structures",
+        "Algorithms",
+        "Git",
+        "SQL",
+        "Object-Oriented Programming",
+        "Debugging",
+        "Unit Testing"
+      ],
+      "preferred_skills": [
+        "Linux",
+        "JavaScript",
+        "HTML/CSS",
+        "REST APIs",
+        "Version Control"
+      ]
+    },
+    {
+      "required_skills": [
+        "Python",
+        "Java",
+        "C++",
+        "Data Structures",
+        "Algorithms",
+        "Git",
+        "SQL",
+        "Object-Oriented Programming",
+        "Debugging",
+        "Unit Testing"
+      ],
+      "preferred_skills": [
+        "Linux",
+        "JavaScript",
+        "HTML/CSS",
+        "REST APIs",
+        "Version Control"
+      ]
+    },
+    {
+      "required_skills": [
+        "Python",
+        "Java",
+        "C++",
+        "Data Structures",
+        "Algorithms",
+        "Git",
+        "SQL",
+        "Object-Oriented Programming",
+        "Debugging",
+        "Unit Testing"
+      ],
+      "preferred_skills": [
+        "Linux",
+        "JavaScript",
+        "HTML/CSS",
+        "REST APIs",
+        "Version Control"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "intern",
+      "field": "software development"
+    },
+    {
+      "seniority": "intern",
+      "field": "software development"
+    },
+    {
+      "seniority": "intern",
+      "field": "software development"
+    }
+  ]
+}

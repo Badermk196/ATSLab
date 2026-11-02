@@ -1,0 +1,96 @@
+{
+  "role": "Client Partner",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Account Management",
+        "Client Relationship Management",
+        "Sales Strategy",
+        "Business Development",
+        "CRM Software",
+        "Contract Negotiation",
+        "Client Retention",
+        "Revenue Growth",
+        "Strategic Planning",
+        "Consultative Selling"
+      ],
+      "preferred_skills": [
+        "Market Analysis",
+        "Proposal Development",
+        "Presentation Skills",
+        "Cross-functional Collaboration",
+        "Customer Success",
+        "Project Management",
+        "SaaS Sales",
+        "Upselling",
+        "Forecasting"
+      ]
+    },
+    {
+      "required_skills": [
+        "Account Management",
+        "Client Relationship Management",
+        "Strategic Planning",
+        "Business Development",
+        "Contract Negotiation",
+        "Project Management",
+        "CRM Software",
+        "Salesforce",
+        "Financial Reporting",
+        "Presentation Skills"
+      ],
+      "preferred_skills": [
+        "Market Research",
+        "Data Analysis",
+        "Cross-functional Collaboration",
+        "Solution Selling",
+        "Customer Retention",
+        "Service Level Agreements",
+        "Budget Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Account Management",
+        "Client Relationship Management",
+        "Business Development",
+        "Strategic Planning",
+        "Sales Strategy",
+        "CRM Software",
+        "Contract Negotiation",
+        "Project Management",
+        "Client Retention",
+        "Revenue Growth"
+      ],
+      "preferred_skills": [
+        "Market Research",
+        "Presentation Skills",
+        "Cross-functional Collaboration",
+        "Solution Selling",
+        "Forecasting",
+        "Customer Success",
+        "Upselling",
+        "Consultative Sales"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "client relations"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "client services"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "client relations"
+    }
+  ]
+}

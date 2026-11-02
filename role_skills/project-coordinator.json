@@ -1,0 +1,92 @@
+{
+  "role": "Project Coordinator",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-20",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Project Coordination",
+        "Project Management Software",
+        "Microsoft Project",
+        "Jira",
+        "Asana",
+        "Smartsheet",
+        "Gantt Charts",
+        "Stakeholder Communication",
+        "Meeting Facilitation",
+        "Status Reporting"
+      ],
+      "preferred_skills": [
+        "Risk Management",
+        "Change Management",
+        "Budget Tracking",
+        "Resource Allocation",
+        "Process Improvement",
+        "SharePoint",
+        "Confluence",
+        "Agile Methodologies"
+      ]
+    },
+    {
+      "required_skills": [
+        "Project Scheduling",
+        "Risk Management",
+        "Budget Tracking",
+        "Stakeholder Communication",
+        "Meeting Facilitation",
+        "Project Documentation",
+        "Microsoft Project",
+        "Jira",
+        "Smartsheet",
+        "Status Reporting"
+      ],
+      "preferred_skills": [
+        "Change Management",
+        "Resource Allocation",
+        "Vendor Coordination",
+        "Process Improvement",
+        "Data Analysis"
+      ]
+    },
+    {
+      "required_skills": [
+        "Project Scheduling",
+        "Meeting Coordination",
+        "Status Reporting",
+        "Risk Tracking",
+        "Issue Management",
+        "Microsoft Project",
+        "Jira",
+        "Confluence",
+        "SharePoint",
+        "Budget Tracking"
+      ],
+      "preferred_skills": [
+        "Resource Allocation",
+        "Vendor Communication",
+        "Change Control",
+        "Data Entry",
+        "Process Documentation",
+        "Smartsheet",
+        "Asana",
+        "Trello"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "project management"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "project management"
+    },
+    {
+      "seniority": "entry",
+      "field": "project management"
+    }
+  ]
+}

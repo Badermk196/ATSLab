@@ -1,0 +1,96 @@
+{
+  "role": "Entrepreneur in Residence",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Business Development",
+        "Market Research",
+        "Product Strategy",
+        "Financial Modeling",
+        "Startup Incubation",
+        "Venture Capital",
+        "Pitch Deck Creation",
+        "Go-to-Market Strategy",
+        "Lean Startup Methodology",
+        "Fundraising"
+      ],
+      "preferred_skills": [
+        "Competitive Analysis",
+        "Customer Acquisition",
+        "Business Plan Development",
+        "MVP Development",
+        "Strategic Partnerships",
+        "Growth Hacking",
+        "Intellectual Property",
+        "Term Sheet Negotiation"
+      ]
+    },
+    {
+      "required_skills": [
+        "Business Development",
+        "Market Research",
+        "Product Strategy",
+        "Financial Modeling",
+        "Startup Incubation",
+        "Venture Capital",
+        "Pitch Deck Creation",
+        "Go-to-Market Strategy",
+        "Lean Startup Methodology",
+        "Fundraising"
+      ],
+      "preferred_skills": [
+        "Competitive Analysis",
+        "Customer Acquisition",
+        "Business Plan Development",
+        "MVP Development",
+        "Strategic Partnerships",
+        "Growth Hacking",
+        "Intellectual Property",
+        "Term Sheet Negotiation"
+      ]
+    },
+    {
+      "required_skills": [
+        "Business Development",
+        "Market Research",
+        "Product Strategy",
+        "Financial Modeling",
+        "Startup Incubation",
+        "Venture Capital",
+        "Pitch Deck Creation",
+        "Go-to-Market Strategy",
+        "Lean Startup Methodology",
+        "Fundraising"
+      ],
+      "preferred_skills": [
+        "Competitive Analysis",
+        "Customer Acquisition",
+        "Business Plan Development",
+        "MVP Development",
+        "Strategic Partnerships",
+        "Growth Hacking",
+        "Intellectual Property",
+        "Term Sheet Negotiation"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "startup development"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "startup development"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "startup development"
+    }
+  ]
+}

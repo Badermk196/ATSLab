@@ -1,0 +1,93 @@
+{
+  "role": "Delivery Lead",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Project Management",
+        "Agile Methodologies",
+        "Scrum",
+        "Stakeholder Management",
+        "Risk Management",
+        "Budget Management",
+        "Resource Allocation",
+        "Delivery Strategy",
+        "Roadmap Development",
+        "Performance Metrics"
+      ],
+      "preferred_skills": [
+        "Jira",
+        "Confluence",
+        "Change Management",
+        "Vendor Management",
+        "Process Improvement",
+        "Client Relationship Management",
+        "Program Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Project Management",
+        "Agile Methodologies",
+        "Scrum",
+        "Stakeholder Management",
+        "Risk Management",
+        "Budget Management",
+        "Resource Allocation",
+        "Delivery Strategy",
+        "Roadmap Development",
+        "Performance Metrics"
+      ],
+      "preferred_skills": [
+        "Jira",
+        "Confluence",
+        "Change Management",
+        "Vendor Management",
+        "Process Improvement",
+        "Client Relationship Management",
+        "Program Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Project Management",
+        "Agile Methodologies",
+        "Scrum",
+        "Stakeholder Management",
+        "Risk Management",
+        "Budget Management",
+        "Resource Allocation",
+        "Delivery Strategy",
+        "Roadmap Development",
+        "Performance Metrics"
+      ],
+      "preferred_skills": [
+        "Jira",
+        "Confluence",
+        "Change Management",
+        "Vendor Management",
+        "Process Improvement",
+        "Client Relationship Management",
+        "Program Management"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "lead",
+      "field": "project delivery"
+    },
+    {
+      "seniority": "lead",
+      "field": "project delivery"
+    },
+    {
+      "seniority": "lead",
+      "field": "project delivery"
+    }
+  ]
+}

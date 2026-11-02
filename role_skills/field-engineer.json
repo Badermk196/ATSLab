@@ -1,0 +1,93 @@
+{
+  "role": "Field Engineer",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Troubleshooting",
+        "On-site Support",
+        "Technical Support",
+        "System Installation",
+        "Preventive Maintenance",
+        "Diagnostic Tools",
+        "Equipment Repair",
+        "Customer Service",
+        "Field Service",
+        "Hardware Installation"
+      ],
+      "preferred_skills": [
+        "Software Installation",
+        "Network Configuration",
+        "Calibration",
+        "Documentation",
+        "Client Training",
+        "Remote Support",
+        "SOP Adherence",
+        "Safety Protocols"
+      ]
+    },
+    {
+      "required_skills": [
+        "Troubleshooting",
+        "On-site Support",
+        "Technical Support",
+        "System Installation",
+        "Preventive Maintenance",
+        "Diagnostic Tools",
+        "Equipment Repair",
+        "Customer Service",
+        "Field Service",
+        "Hardware Installation"
+      ],
+      "preferred_skills": [
+        "Software Installation",
+        "Network Configuration",
+        "Calibration",
+        "Documentation",
+        "Client Training",
+        "Remote Support",
+        "Electrical Systems",
+        "Mechanical Systems"
+      ]
+    },
+    {
+      "required_skills": [
+        "Troubleshooting",
+        "Preventive Maintenance",
+        "Equipment Installation",
+        "Technical Support",
+        "Diagnostic Tools",
+        "System Integration",
+        "Calibration",
+        "Field Service Software",
+        "Schematic Reading",
+        "Safety Protocols"
+      ],
+      "preferred_skills": [
+        "Customer Training",
+        "Report Generation",
+        "Inventory Management",
+        "Remote Diagnostics",
+        "Quality Control"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "field engineering"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "field engineering"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "technical field service"
+    }
+  ]
+}

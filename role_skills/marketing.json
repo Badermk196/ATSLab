@@ -1,0 +1,96 @@
+{
+  "role": "Marketing",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Market Research",
+        "SEO",
+        "SEM",
+        "Content Marketing",
+        "Social Media Marketing",
+        "Email Marketing",
+        "Google Analytics",
+        "CRM Software"
+      ],
+      "preferred_skills": [
+        "Brand Management",
+        "Product Marketing",
+        "Digital Advertising",
+        "Copywriting",
+        "A/B Testing",
+        "Marketing Automation",
+        "Data Analysis",
+        "Budget Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Market Research",
+        "SEO",
+        "SEM",
+        "Content Marketing",
+        "Social Media Marketing",
+        "Email Marketing",
+        "Google Analytics",
+        "CRM Software"
+      ],
+      "preferred_skills": [
+        "Brand Management",
+        "Product Marketing",
+        "Digital Advertising",
+        "Copywriting",
+        "A/B Testing",
+        "Marketing Automation",
+        "Data Analysis",
+        "Budget Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Market Research",
+        "SEO",
+        "SEM",
+        "Content Marketing",
+        "Social Media Marketing",
+        "Email Marketing",
+        "Google Analytics",
+        "CRM Software"
+      ],
+      "preferred_skills": [
+        "Brand Management",
+        "Product Marketing",
+        "Digital Advertising",
+        "Copywriting",
+        "A/B Testing",
+        "Marketing Automation",
+        "Data Analysis",
+        "Budget Management"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "Marketing"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Marketing"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Marketing"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "role": "SEO Specialist",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Keyword Research",
+        "On-Page SEO",
+        "Technical SEO",
+        "Link Building",
+        "Google Analytics",
+        "Google Search Console",
+        "Content Optimization",
+        "SEO Audits",
+        "SERP Analysis",
+        "Schema Markup"
+      ],
+      "preferred_skills": [
+        "SEMrush",
+        "Ahrefs",
+        "Moz",
+        "Rank Tracking",
+        "Competitor Analysis",
+        "Local SEO",
+        "WordPress SEO",
+        "HTML",
+        "CSS"
+      ]
+    },
+    {
+      "required_skills": [
+        "Keyword Research",
+        "On-Page SEO",
+        "Technical SEO",
+        "Link Building",
+        "Google Analytics",
+        "Google Search Console",
+        "Content Optimization",
+        "SEO Audits",
+        "SERP Analysis",
+        "Schema Markup"
+      ],
+      "preferred_skills": [
+        "SEMrush",
+        "Ahrefs",
+        "Moz",
+        "Rank Tracking",
+        "Competitor Analysis",
+        "Local SEO",
+        "WordPress SEO",
+        "HTML",
+        "CSS"
+      ]
+    },
+    {
+      "required_skills": [
+        "Keyword Research",
+        "On-Page SEO",
+        "Technical SEO",
+        "Link Building",
+        "Google Analytics",
+        "Google Search Console",
+        "Content Optimization",
+        "SEO Audits",
+        "SERP Analysis",
+        "Schema Markup"
+      ],
+      "preferred_skills": [
+        "SEMrush",
+        "Ahrefs",
+        "Moz",
+        "Rank Tracking",
+        "Competitor Analysis",
+        "Local SEO",
+        "WordPress SEO",
+        "HTML",
+        "CSS"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "digital marketing"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "digital marketing"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "digital marketing"
+    }
+  ]
+}

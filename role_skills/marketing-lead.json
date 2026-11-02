@@ -1,0 +1,96 @@
+{
+  "role": "Marketing Lead",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Digital Marketing",
+        "Performance Marketing",
+        "Budget Management",
+        "Team Leadership",
+        "Marketing Analytics",
+        "Content Strategy",
+        "SEO",
+        "SEM"
+      ],
+      "preferred_skills": [
+        "CRM Software",
+        "Email Marketing",
+        "Social Media Marketing",
+        "Brand Management",
+        "Market Research",
+        "Conversion Rate Optimization",
+        "A/B Testing",
+        "Project Management"
+      ]
+    },
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Budget Management",
+        "Team Leadership",
+        "Performance Marketing",
+        "Digital Marketing",
+        "Market Research",
+        "Analytics Platforms",
+        "SEO",
+        "Content Strategy"
+      ],
+      "preferred_skills": [
+        "CRM Software",
+        "Email Marketing",
+        "Social Media Marketing",
+        "Brand Management",
+        "Agency Management",
+        "Product Marketing",
+        "Conversion Rate Optimization",
+        "A/B Testing"
+      ]
+    },
+    {
+      "required_skills": [
+        "Marketing Strategy",
+        "Campaign Management",
+        "Budget Management",
+        "Team Leadership",
+        "Performance Marketing",
+        "Digital Marketing",
+        "Market Research",
+        "Analytics Platforms",
+        "SEO",
+        "Content Strategy"
+      ],
+      "preferred_skills": [
+        "CRM Software",
+        "Email Marketing",
+        "Social Media Marketing",
+        "Brand Management",
+        "Agency Management",
+        "Product Marketing",
+        "Conversion Rate Optimization",
+        "A/B Testing"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "lead",
+      "field": "marketing strategy"
+    },
+    {
+      "seniority": "lead",
+      "field": "Marketing Strategy"
+    },
+    {
+      "seniority": "lead",
+      "field": "Marketing Strategy"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "role": "Admin and HR",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "HRIS",
+        "Payroll Processing",
+        "Benefits Administration",
+        "Recruitment",
+        "Onboarding",
+        "Employee Relations",
+        "Office Management",
+        "Records Management",
+        "Scheduling",
+        "Expense Reporting"
+      ],
+      "preferred_skills": [
+        "Applicant Tracking Systems",
+        "Performance Management",
+        "Compliance",
+        "Vendor Management",
+        "Travel Arrangements",
+        "Microsoft Office Suite",
+        "Data Entry",
+        "Policy Development"
+      ]
+    },
+    {
+      "required_skills": [
+        "HRIS",
+        "Payroll Processing",
+        "Benefits Administration",
+        "Recruitment",
+        "Onboarding",
+        "Employee Relations",
+        "Office Management",
+        "Records Management",
+        "Scheduling",
+        "Expense Reporting"
+      ],
+      "preferred_skills": [
+        "Applicant Tracking Systems",
+        "Performance Management",
+        "Compliance",
+        "Vendor Management",
+        "Travel Arrangements",
+        "Microsoft Office Suite",
+        "Data Entry",
+        "Policy Development"
+      ]
+    },
+    {
+      "required_skills": [
+        "HRIS",
+        "Payroll Processing",
+        "Benefits Administration",
+        "Recruitment",
+        "Onboarding",
+        "Employee Relations",
+        "Office Management",
+        "Records Management",
+        "Scheduling",
+        "Expense Reporting"
+      ],
+      "preferred_skills": [
+        "Applicant Tracking Systems",
+        "Performance Management",
+        "Compliance",
+        "Vendor Management",
+        "Travel Arrangements",
+        "Microsoft Office Suite",
+        "Data Entry",
+        "Policy Development"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "Administrative Human Resources"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Administrative Human Resources"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "Administrative Human Resources"
+    }
+  ]
+}

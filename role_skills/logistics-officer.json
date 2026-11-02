@@ -1,0 +1,96 @@
+{
+  "role": "Logistics Officer",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Inventory Management",
+        "Warehouse Operations",
+        "Transportation Management",
+        "Logistics Software",
+        "Supply Chain Optimization",
+        "Freight Forwarding",
+        "Customs Regulations",
+        "Route Planning",
+        "Order Fulfillment",
+        "ERP Systems"
+      ],
+      "preferred_skills": [
+        "Shipping Documentation",
+        "Vendor Management",
+        "Data Analysis",
+        "Fleet Management",
+        "Quality Control",
+        "Safety Regulations",
+        "Cost Reduction",
+        "SAP Logistics"
+      ]
+    },
+    {
+      "required_skills": [
+        "Inventory Management",
+        "Warehouse Operations",
+        "Supply Chain Management",
+        "Logistics Software",
+        "Freight Forwarding",
+        "Customs Regulations",
+        "Transportation Management",
+        "Route Optimization",
+        "Shipping Documentation",
+        "Vendor Management"
+      ],
+      "preferred_skills": [
+        "ERP Systems",
+        "Order Fulfillment",
+        "Fleet Management",
+        "Import Export",
+        "Data Analysis",
+        "Procurement",
+        "Quality Control",
+        "Safety Regulations"
+      ]
+    },
+    {
+      "required_skills": [
+        "Inventory Management",
+        "Warehouse Operations",
+        "Transportation Management",
+        "Logistics Software",
+        "Supply Chain Optimization",
+        "Customs Regulations",
+        "Freight Forwarding",
+        "Route Planning",
+        "Vendor Management",
+        "Order Fulfillment"
+      ],
+      "preferred_skills": [
+        "ERP Systems",
+        "Data Analysis",
+        "Shipping Documentation",
+        "Fleet Management",
+        "Compliance Management",
+        "Demand Planning",
+        "Procurement",
+        "Quality Control"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "supply chain logistics"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "logistics operations"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "supply chain logistics"
+    }
+  ]
+}

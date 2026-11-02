@@ -1,0 +1,98 @@
+{
+  "role": "IT Audit",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "IT Audit",
+        "Risk Assessment",
+        "Internal Controls",
+        "Compliance Auditing",
+        "SOX Compliance",
+        "NIST Framework",
+        "COBIT",
+        "Data Analysis",
+        "Audit Reporting",
+        "Cybersecurity Audits"
+      ],
+      "preferred_skills": [
+        "GAAP",
+        "ISACA",
+        "CISA Certification",
+        "Cloud Security",
+        "Network Security",
+        "Database Auditing",
+        "Project Management",
+        "IT Governance"
+      ]
+    },
+    {
+      "required_skills": [
+        "IT Audit",
+        "Risk Assessment",
+        "Internal Controls",
+        "Compliance Auditing",
+        "SOX Compliance",
+        "NIST Framework",
+        "COBIT",
+        "Data Analysis",
+        "Audit Reporting",
+        "Cybersecurity Audits"
+      ],
+      "preferred_skills": [
+        "GAAP",
+        "ISACA",
+        "CISA Certification",
+        "Cloud Security",
+        "Network Security",
+        "Database Auditing",
+        "Project Management",
+        "IT Governance"
+      ]
+    },
+    {
+      "required_skills": [
+        "IT Audit",
+        "Risk Assessment",
+        "Internal Controls",
+        "SOX Compliance",
+        "NIST Framework",
+        "COBIT",
+        "Cybersecurity Auditing",
+        "Data Analysis",
+        "Audit Reporting",
+        "IT Governance"
+      ],
+      "preferred_skills": [
+        "Cloud Security",
+        "Network Security",
+        "Database Security",
+        "Access Management",
+        "Vulnerability Management",
+        "GDPR Compliance",
+        "HIPAA Compliance",
+        "Project Management",
+        "SQL",
+        "SAP Audit"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "IT Audit"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "IT Audit"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "IT Audit"
+    }
+  ]
+}

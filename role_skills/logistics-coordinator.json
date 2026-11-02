@@ -1,0 +1,87 @@
+{
+  "role": "Logistics Coordinator",
+  "field_context": null,
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-16",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Logistics Coordination",
+        "Freight Forwarding",
+        "Shipping Documentation",
+        "Customs Clearance",
+        "Inventory Management",
+        "Warehouse Operations",
+        "Transportation Management System",
+        "Order Processing",
+        "Supply Chain Operations",
+        "Microsoft Excel"
+      ],
+      "preferred_skills": [
+        "Carrier Relations",
+        "Route Optimization",
+        "Export Compliance",
+        "Import Regulations",
+        "Enterprise Resource Planning"
+      ]
+    },
+    {
+      "required_skills": [
+        "Logistics Coordination",
+        "Freight Forwarding",
+        "Shipping Documentation",
+        "Customs Clearance",
+        "Inventory Management",
+        "Warehouse Operations",
+        "Transportation Management System",
+        "Order Processing",
+        "Supply Chain Operations",
+        "Microsoft Excel"
+      ],
+      "preferred_skills": [
+        "Carrier Relations",
+        "Route Optimization",
+        "Export Compliance",
+        "Import Regulations",
+        "Enterprise Resource Planning"
+      ]
+    },
+    {
+      "required_skills": [
+        "Logistics Coordination",
+        "Freight Forwarding",
+        "Shipping Documentation",
+        "Customs Clearance",
+        "Inventory Management",
+        "Warehouse Operations",
+        "Transportation Management System",
+        "Order Processing",
+        "Supply Chain Operations",
+        "Microsoft Excel"
+      ],
+      "preferred_skills": [
+        "Carrier Relations",
+        "Route Optimization",
+        "Export Compliance",
+        "Import Regulations",
+        "Enterprise Resource Planning"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "entry",
+      "field": "supply chain logistics"
+    },
+    {
+      "seniority": "entry",
+      "field": "supply chain logistics"
+    },
+    {
+      "seniority": "entry",
+      "field": "supply chain logistics"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "_about": "Reference resumes and the score range each must stay in (2026-10-26). They lock how the Lab scores ANY resume: if a score leaves its range, the general rule is fixed, never one file. Scores are measured without the AI reviewer (no API key), so the test is the same on every run. Checked by test_reference.py.",
+  "resumes": [
+    {"name": "Rowan original", "file": "weakcvs/Rowan_Elatrache_Original_CV.pdf", "range": [15, 30],
+     "why": "landscape, 4 columns, little data"},
+    {"name": "Rowan new file", "file": "testcvs/Rowan_Elatrache_CV.pdf", "range": [40, 50],
+     "max_parts": {"structure": 55},
+     "why": "designed pages + landscape text pages, more data"},
+    {"name": "Tareq old sidebar resume", "file": "weakcvs/Tareq_old_sidebar_CV.pdf", "range": [35, 45]},
+    {"name": "Tareq new resume", "file": "strongcvs/Tareq_ATS_Gemini.pdf", "range": [82, 92],
+     "why": "single column, strong"},
+    {"name": "Tareq 1000Jobs resume (Marsh McLennan)", "file": "strongcvs/Tareq_MarshMcLennan_latest.pdf",
+     "range": [75, 85]},
+    {"name": "Shikha original", "file": "weakcvs/Shikha_Sureka_original.pdf", "range": [45, 55]},
+    {"name": "Shikha 1000Jobs (Chanel)", "file": "strongcvs/ShikhaSureka_CHANEL.pdf", "range": [80, 90]},
+    {"name": "Shikha 1000Jobs (RAK Bank)", "file": "strongcvs/ShikhaSureka_RAKBANK.pdf", "range": [80, 90]},
+    {"name": "Shikha 1000Jobs (Sardine)", "file": "strongcvs/ShikhaSureka_Sardine.pdf", "range": [80, 90]},
+    {"name": "Jibran original", "file": "CV4/jibran-original-cv.pdf", "range": [60, 70]},
+    {"name": "Jibran freelancer resume", "file": "strongcvs/Jibran_Konkar_Resume.pdf", "range": [75, 82]},
+    {"name": "Jibran 1000Jobs (NCR Atleos)", "file": "strongcvs/JibranKonkar_NCRAtleos.pdf", "range": [80, 90]},
+    {"name": "Jibran 1000Jobs (Al Futtaim)", "file": "strongcvs/JibranKonkar_AlFuttaim.pdf", "range": [80, 90]},
+    {"name": "Mohamed original", "file": "testcvs/MohamedShokry-original.pdf", "range": [62, 72]},
+    {"name": "Mohamed 1000Jobs (DataRobot)", "file": "strongcvs/Mohamedshokry_DataRobot.pdf", "range": [80, 90]},
+    {"name": "Mohamed 1000Jobs (Mastercard)", "file": "strongcvs/Mohamedshokry_Mastercard.pdf", "range": [80, 90]},
+    {"name": "Mohamed 1000Jobs (Siemens Energy)", "file": "strongcvs/Mohamedshokry_SiemensEnergy.pdf",
+     "range": [80, 90]}
+  ],
+  "sets": [
+    {"name": "Strong set", "folder": "strongcvs", "min": 75},
+    {"name": "Weak set", "folder": "weakcvs", "max": 60}
+  ]
+}

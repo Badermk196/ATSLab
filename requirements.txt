@@ -1,0 +1,34 @@
+# 1000Jobs ATS Lab v1.4 - the package versions that work (Python 3.12), checked on 2026-10-31 (same as v1.1).
+# Install with:
+#   py -3.12 -m pip install -r requirements.txt          (Windows)
+#   python -m pip install -r requirements.txt            (a server, Docker, Streamlit Cloud)
+# torch is the CPU-only build, from the PyTorch index on the next line (no graphics card needed).
+--extra-index-url https://download.pytorch.org/whl/cpu
+# If a library ever fails on a CPU instruction
+# (WinError -1073741795 / 0xC000001D), the Lab skips that part with a note: see ATSLab_v3.embedder_ok and
+# cv_layout.PageRenderer.
+
+# reading PDFs and page images
+pdfplumber==0.11.10
+pdfminer.six==20260107
+pypdfium2==5.13.0
+pillow==12.2.0
+
+# meaning match (M3)
+torch==2.14.1+cpu
+sentence-transformers==6.1.0
+transformers==5.10.1
+tokenizers==0.22.2
+safetensors==0.7.0
+numpy==2.4.6
+scipy==1.18.1
+scikit-learn==1.9.1
+
+# dashboard
+streamlit==1.58.0
+pandas==3.0.3
+pyarrow==24.0.0
+
+# AI calls (OpenRouter) and tests
+requests==2.32.3
+reportlab==5.0.1

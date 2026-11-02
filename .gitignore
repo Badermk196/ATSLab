@@ -1,0 +1,61 @@
+# ============================================
+# ATS Lab: never upload private data
+# ============================================
+
+# Passwords and private settings
+.streamlit/secrets.toml
+.env
+
+# App data, history and saved results
+data/
+reports/
+cv_reviews/
+dashboard_jobs/
+*.db
+*.csv
+results_*.json
+
+# Folders with real resumes
+CVS/
+CV2/
+CV3/
+CV4/
+JobDe/
+testcvs/
+strongcvs/
+weakcvs/
+competitorcvs/
+shikhatest/
+tariqtest/
+aiApply.cvs/
+nextsteps-resumes/
+nextsteps-resumes.zip
+
+# Test datasets and calibration
+calib_*/
+pretest_public/
+jdtest_public/
+
+# Reports that mention real people or resumes
+calib_report.md
+quote_changes.md
+bug_truth.json
+JDTEST.md
+
+# Frozen releases and design checks
+release-*/
+design_check_v*/
+
+# Work and temporary files
+.work/
+__pycache__/
+*.pyc
+*.log
+.venv/
+
+# Documents and images (may contain personal data)
+*.pdf
+*.docx
+*.png
+*.jpg
+*.webp

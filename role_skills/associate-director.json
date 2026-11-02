@@ -1,0 +1,92 @@
+{
+  "role": "Associate Director",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-20",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Strategic Planning",
+        "Budget Management",
+        "P&L Management",
+        "Team Leadership",
+        "Stakeholder Management",
+        "Project Management",
+        "Business Development",
+        "Operational Excellence",
+        "Performance Metrics",
+        "Risk Management"
+      ],
+      "preferred_skills": [
+        "Process Improvement",
+        "Vendor Management",
+        "Client Relationship Management",
+        "Market Analysis",
+        "Financial Reporting",
+        "Change Management",
+        "Cross-functional Collaboration"
+      ]
+    },
+    {
+      "required_skills": [
+        "Strategic Planning",
+        "Budget Management",
+        "P&L Responsibility",
+        "Team Leadership",
+        "Project Management",
+        "Stakeholder Management",
+        "Operational Excellence",
+        "Performance Metrics",
+        "Process Improvement",
+        "Risk Management"
+      ],
+      "preferred_skills": [
+        "Vendor Management",
+        "Client Relationship Management",
+        "Business Development",
+        "Data Analysis",
+        "Change Management",
+        "Resource Allocation",
+        "Compliance Oversight"
+      ]
+    },
+    {
+      "required_skills": [
+        "Strategic Planning",
+        "Budget Management",
+        "P&L Responsibility",
+        "Team Leadership",
+        "Project Management",
+        "Stakeholder Management",
+        "Operational Excellence",
+        "Performance Metrics",
+        "Process Improvement",
+        "Risk Management"
+      ],
+      "preferred_skills": [
+        "Vendor Management",
+        "Client Relationship Management",
+        "Business Development",
+        "Data Analysis",
+        "Change Management",
+        "Resource Allocation",
+        "Compliance Oversight"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "director or head",
+      "field": "general management"
+    },
+    {
+      "seniority": "director or head",
+      "field": "general management"
+    },
+    {
+      "seniority": "director or head",
+      "field": "general management"
+    }
+  ]
+}

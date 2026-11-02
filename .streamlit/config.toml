@@ -1,0 +1,37 @@
+# The design's colors (1000Jobs ATS Lab Redesign): indigo, a light grey page, white cards. Light and dark mode:
+# the app follows the visitor's system setting (lab_ui.py has the same two palettes for the app's own parts).
+[theme]
+baseRadius = "10px"
+buttonRadius = "12px"
+showWidgetBorder = true
+
+[theme.light]
+primaryColor = "#4f46e5"
+backgroundColor = "#f5f6fa"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#111827"
+borderColor = "#e6e8ef"
+linkColor = "#4f46e5"
+
+[theme.light.sidebar]
+backgroundColor = "#ffffff"
+
+[theme.dark]
+primaryColor = "#6366f1"
+backgroundColor = "#0b1020"
+secondaryBackgroundColor = "#131a2b"
+textColor = "#e5e7eb"
+borderColor = "#263049"
+linkColor = "#a5b4fc"
+
+[theme.dark.sidebar]
+backgroundColor = "#131a2b"
+
+[server]
+# resumes are small: refuse very large uploads (MB)
+maxUploadSize = 10
+# no file watcher: it scanned every loaded library on each page run (slow pages, errors in the log)
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

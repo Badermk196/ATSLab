@@ -1,0 +1,93 @@
+{
+  "role": "Head of Customer Success",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-10-19",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Customer Success Strategy",
+        "SaaS",
+        "Churn Reduction",
+        "Customer Lifecycle Management",
+        "Customer Retention",
+        "Team Leadership",
+        "P&L Management",
+        "CRM Software",
+        "Customer Onboarding",
+        "Upselling"
+      ],
+      "preferred_skills": [
+        "Account Management",
+        "Customer Experience",
+        "Cross-functional Collaboration",
+        "Data Analysis",
+        "Product Adoption",
+        "Client Relationship Management",
+        "Customer Advocacy"
+      ]
+    },
+    {
+      "required_skills": [
+        "Customer Success Strategy",
+        "SaaS",
+        "Churn Reduction",
+        "Customer Lifecycle Management",
+        "Customer Retention",
+        "Team Leadership",
+        "P&L Management",
+        "CRM Software",
+        "Customer Onboarding",
+        "Upselling"
+      ],
+      "preferred_skills": [
+        "Account Management",
+        "Customer Experience",
+        "Cross-functional Collaboration",
+        "Data Analysis",
+        "Product Adoption",
+        "Client Relationship Management",
+        "Customer Advocacy"
+      ]
+    },
+    {
+      "required_skills": [
+        "Customer Success Strategy",
+        "Customer Retention",
+        "Churn Reduction",
+        "SaaS",
+        "Customer Lifecycle Management",
+        "Team Leadership",
+        "Customer Relationship Management",
+        "Customer Onboarding",
+        "Upselling",
+        "Cross-selling"
+      ],
+      "preferred_skills": [
+        "Customer Advocacy",
+        "Customer Experience",
+        "Product Adoption",
+        "CRM Software",
+        "Account Management",
+        "Customer Feedback",
+        "SLA Management",
+        "Strategic Planning"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "director or head",
+      "field": "customer relations"
+    },
+    {
+      "seniority": "director or head",
+      "field": "customer relations"
+    },
+    {
+      "seniority": "director or head",
+      "field": "customer experience"
+    }
+  ]
+}
