@@ -111,6 +111,8 @@ header[data-testid="stHeader"] {background: transparent; pointer-events: none;}
 .stApp [class*="st-key-card"] h3, .a-h3 {font-size: 1.12rem; font-weight: 700; margin: 0; padding: 0;
   color: var(--a-text); letter-spacing: -.2px;}
 .a-sub {color: var(--a-muted); font-size: .9rem; margin: 2px 0 0 0;}
+.a-note {color: var(--a-text-2); background: var(--a-pri-soft); border: 1px solid var(--a-pri-line);
+  border-radius: 10px; padding: 8px 11px; font-size: .86rem; margin: 12px 0 0 0; word-break: break-word;}
 
 /* page titles */
 .a-title {font-size: 2.15rem; font-weight: 800; letter-spacing: -.8px; color: var(--a-text); margin: 0;
@@ -263,14 +265,20 @@ ADMIN = """
    scroll bar on BOTH sides of its scroll area (scrollbar-gutter), as wide as the browser's scroll bars: that made the
    left edge differ between browsers. Here it is off, and the sidebar never scrolls sideways. */
 section[data-testid="stSidebar"] {width: 248px !important; min-width: 248px !important; max-width: 248px !important;
-  background: var(--a-card); border-right: 1px solid var(--a-line); box-sizing: border-box;}
+  background: var(--a-card); border-right: 1px solid var(--a-line); box-sizing: border-box;
+  overflow-x: hidden !important;}
 section[data-testid="stSidebar"] > div:first-child {background: var(--a-card);}
 [data-testid="stSidebarContent"] {display: flex; flex-direction: column; height: 100%; padding: 0 !important;
   overflow-x: hidden !important; scrollbar-gutter: auto !important; box-sizing: border-box; position: relative;}
+/* The header holds only the fold button: it must never sit on the brand, so it takes no clicks itself. */
 [data-testid="stSidebarHeader"] {position: absolute; top: 0; right: 0; height: 0; min-height: 0; padding: 0;
-  margin: 0; z-index: 3;}
-/* the fold button on the line of "1000Jobs" (the brand starts 20px down; its first line is 34px high) */
-[data-testid="stSidebarCollapseButton"] {position: absolute; top: 23px; right: 14px; z-index: 3; margin: 0;}
+  margin: 0; z-index: 4; pointer-events: none;}
+/* The fold button, always visible, on the line of "1000Jobs": the brand starts 20px down, its first line is 34px high,
+   and .a-brand keeps 44px free on the right for this button (32px + 12px free). It overlaps nothing. */
+[data-testid="stSidebarCollapseButton"] {position: absolute; top: 23px; right: 14px; z-index: 4; margin: 0;
+  pointer-events: auto; visibility: visible !important; opacity: 1 !important; width: 32px; height: 28px;}
+[data-testid="stSidebarCollapseButton"] button, [data-testid="stSidebarCollapseButton"] button:hover
+  {visibility: visible !important; opacity: 1 !important; pointer-events: auto;}
 [data-testid="stSidebarUserContent"] {padding: 20px 16px 18px 16px !important; margin: 0 !important; width: 100%;
   box-sizing: border-box; flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0;}
 [data-testid="stSidebarUserContent"] * {box-sizing: border-box; max-width: 100%;}
@@ -280,18 +288,23 @@ section[data-testid="stSidebar"] > div:first-child {background: var(--a-card);}
 .st-key-side-foot {margin-top: auto !important;}
 section[data-testid="stSidebar"] [class*="st-key-nav_"], section[data-testid="stSidebar"] [class*="st-key-nav_"]
   [data-testid="stButton"] {width: 100% !important;}
-/* the brand: "1000Jobs", "ATS LAB", then the badge on its own line, all on the menu items' text line (10px in) */
+/* The brand: "1000Jobs", "ATS LAB", then the "★ ADMIN" badge, each on its own line, all starting on the same line
+   as the menu items' text (10px in), with 4px and 8px of space between them. The 44px on the right is the room of
+   the fold button, so the badge and the words can never run under it. */
 .a-brand {padding: 0 44px 16px 10px; border-bottom: 1px solid var(--a-line); margin-bottom: 14px;}
 .a-brand .logo {font-weight: 800; font-size: 1.6rem; color: var(--a-pri); letter-spacing: -1px; line-height: 34px;}
 .a-brand .lab {display: block; font-size: .72rem; font-weight: 700; letter-spacing: .08em; color: var(--a-muted);
   margin-top: 4px;}
-.a-brand .badge {display: inline-block; font-size: .72rem; font-weight: 700; color: var(--a-pri-text);
+.a-brand .badge {display: block; width: max-content; font-size: .72rem; font-weight: 700; color: var(--a-pri-text);
   background: var(--a-pri-soft); border: 1px solid var(--a-pri-line); border-radius: 7px; padding: 1px 7px;
   margin-top: 8px;}
 .a-ws {font-size: .72rem; font-weight: 700; letter-spacing: .08em; color: var(--a-muted); padding: 4px 10px 8px 10px;}
-section[data-testid="stSidebar"] [class*="st-key-nav_"] button {width: 100%; justify-content: flex-start;
-  padding: 8px 10px; min-height: 40px; border-radius: 10px; border: 1px solid transparent; color: var(--a-text-2);
-  background: transparent; box-shadow: none; margin: 0;}
+/* The menu: every item (open or not, hovered or not) keeps the same box and the same 8px 10px padding, so the open
+   item is never wider, never shifted and never clipped. */
+section[data-testid="stSidebar"] [class*="st-key-nav_"] button {width: 100% !important; justify-content: flex-start;
+  padding: 8px 10px !important; min-height: 40px; border-radius: 10px; border: 1px solid transparent;
+  color: var(--a-text-2); background: transparent; box-shadow: none; margin: 0; box-sizing: border-box;
+  overflow: hidden;}
 section[data-testid="stSidebar"] [class*="st-key-nav_"] button > div,
 section[data-testid="stSidebar"] [class*="st-key-nav_"] button span[data-has-shortcut] {justify-content: flex-start
   !important; width: 100%;}
@@ -300,13 +313,17 @@ section[data-testid="stSidebar"] [class*="st-key-nav_"] button p {font-weight: 5
 section[data-testid="stSidebar"] [class*="st-key-nav_"] button [data-testid="stIconMaterial"] {font-size: 20px;
   color: var(--a-muted); margin-right: 6px;}
 section[data-testid="stSidebar"] [class*="st-key-nav_"] button:hover {background: var(--a-hover); color: var(--a-text);}
-.a-foot {display: flex; align-items: center; gap: 10px; min-width: 0;}
+/* The bottom of the sidebar: the profile card (initial, name, "Admin", sign-out) starts and ends exactly like the
+   menu items and can never leave the sidebar, whatever the name is. */
+.st-key-side-foot {width: 100% !important; max-width: 100% !important;}
+.a-foot {display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto;}
 .st-key-side-card {border: 1px solid var(--a-line); border-radius: 14px; padding: 10px 6px 10px 10px;
-  background: var(--a-card); width: 100% !important; margin: 0 !important;}
+  background: var(--a-card); width: 100% !important; max-width: 100% !important; margin: 0 !important;
+  box-sizing: border-box; overflow: hidden;}
 .a-foot .nm {font-weight: 600; color: var(--a-text); font-size: .92rem; line-height: 1.2; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;}
 .a-foot .rl {color: var(--a-muted); font-size: .8rem;}
-.a-ver {color: var(--a-faint); font-size: .75rem; padding: 8px 10px 0 10px;}
+.a-ver {color: var(--a-faint); font-size: .75rem; padding: 8px 10px 0 10px; max-width: 100%;}
 .st-key-side-card [data-testid="stHorizontalBlock"] {align-items: center; gap: 4px; flex-wrap: nowrap;}
 .st-key-side-card [data-testid="stColumn"] {min-width: 0 !important;}
 .st-key-side-card [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"] {align-items: flex-end;}

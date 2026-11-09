@@ -1,25 +1,26 @@
-# ============================================
-# ATS Lab: never upload private data
-# ============================================
-
-# Passwords and private settings
+# Never put these in a code repository: secrets, real resumes, the history database, results.
+# The private folders below hold real user data (resumes, reports, job descriptions, AI reviews):
+# they must never be committed, packed or uploaded.
 .streamlit/secrets.toml
-.env
-
-# App data, history and saved results
 data/
-reports/
-cv_reviews/
-dashboard_jobs/
-*.db
+release-*/
+pretest_public/
+jdtest_public/
+design_check_v*/
+calib_*/
+__pycache__/
+*.pyc
+*.log
 *.csv
 results_*.json
-
-# Folders with real resumes
-CVS/
+cv_reviews/
+dashboard_jobs/
+calib_work/
+calib_huntr/
 CV2/
 CV3/
 CV4/
+CVS/
 JobDe/
 testcvs/
 strongcvs/
@@ -27,35 +28,22 @@ weakcvs/
 competitorcvs/
 shikhatest/
 tariqtest/
-aiApply.cvs/
 nextsteps-resumes/
 nextsteps-resumes.zip
-
-# Test datasets and calibration
-calib_*/
-pretest_public/
-jdtest_public/
-
-# Reports that mention real people or resumes
-calib_report.md
-quote_changes.md
-bug_truth.json
-JDTEST.md
-
-# Frozen releases and design checks
-release-*/
-design_check_v*/
-
-# Work and temporary files
+aiApply.cvs/
+reports/
+# this session's working files (screenshots, drafts, test data, logs) and the packed results
 .work/
-__pycache__/
-*.pyc
-*.log
-.venv/
-
-# Documents and images (may contain personal data)
-*.pdf
-*.docx
-*.png
-*.jpg
-*.webp
+outputs/
+sidebar_check/
+# the live server's secrets (see DEPLOY_LIVE.md): never commit them
+.env
+# the generated test fixtures: letter-spaced headings and fresh graduates (no real resumes)
+golden_extra/
+# working notes and inventories that quote real resumes or list real candidates (freeze 2026-11-09)
+quote_changes.md
+calib_report.md
+golden_candidates.json
+riyaj-portfolio/
+# the Manus session folder
+.manus/

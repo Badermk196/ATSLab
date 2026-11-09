@@ -5,11 +5,12 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
-    ATSLAB_DATA_DIR=/data HF_HOME=/opt/hf HF_HUB_DISABLE_TELEMETRY=1
+    ATSLAB_DATA_DIR=/data HF_HOME=/opt/hf HF_HUB_DISABLE_TELEMETRY=1 TZ=Asia/Dubai
 
-# Chromium prints the PDF reports; the fonts are a fallback when Google Fonts cannot be reached
+# Chromium prints the PDF reports; the fonts are a fallback when Google Fonts cannot be reached; tzdata makes the
+# times in the History the team's local time (the app saves the server's local time)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends chromium fonts-dejavu-core \
+ && apt-get install -y --no-install-recommends chromium fonts-dejavu-core tzdata \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

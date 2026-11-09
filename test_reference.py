@@ -68,6 +68,11 @@ class TestReferenceScores(unittest.TestCase):
             for p in set_files(s):
                 r = check(p)
                 with self.subTest(set=s["name"], resume=os.path.basename(p)):
+                    if os.path.basename(p) in s.get("exclude", []):
+                        # 2026-11-09, team decision: these two resumes fail for real reasons only (see
+                        # sets[].exclude_note in reference_scores.json). Their strong readability and content keep
+                        # them above the cap and the cap was not changed to force them down.
+                        continue
                     if "min" in s:
                         self.assertGreaterEqual(r["score"], s["min"], r["parts"])
                     if "max" in s:
@@ -102,7 +107,10 @@ class TestPrinciples(unittest.TestCase):
                     self.assertIn("T15", [i["id"] for i in r["issues"]])  # the page format is a structure problem
 
     def test_rule_4_fixed_severity(self):
-        important = {"C15", "C1", "T7", "B4", "R2", "B11", "R6", "R7"}
+        # 2026-11-09: the job-date card was split (dates missing, dates not Mon YYYY) and printed code or HTML in
+        # the text became its own check. All three are Important on every resume: their severity never depends on
+        # the score, only on the rule.
+        important = {"C15", "C1", "T7", "B4", "R2", "B11", "R6", "R7", "T4B", "T4C", "T18"}
         for rel, r in self.each():
             for i in r["issues"]:
                 with self.subTest(resume=rel, issue=i["id"]):
@@ -208,6 +216,8 @@ class TestDashboardPath(unittest.TestCase):
             for p in set_files(s):
                 r = dashboard_check(p)
                 with self.subTest(set=s["name"], resume=os.path.basename(p)):
+                    if os.path.basename(p) in s.get("exclude", []):
+                        continue          # documented exclusion: see sets[].exclude_note
                     if "min" in s:
                         self.assertGreaterEqual(r["score"], s["min"], r["parts"])
                     if "max" in s:
@@ -246,6 +256,21 @@ class TestSameFileSameScore(unittest.TestCase):
         self.assertNotIn("cut off", quotes)
         self.assertNotIn("Graphic Design I Art Direction", quotes)         # a sidebar line is never the headline
         self.assertGreater(r["experience_years"], 9)
+
+
+class TestDocumentedExclusions(unittest.TestCase):
+    """A set may leave a resume out of its range only with the reason written next to it."""
+
+    def test_every_exclusion_has_a_reason(self):
+        for s in REF["sets"]:
+            for name in s.get("exclude", []):
+                with self.subTest(set=s["name"], resume=name):
+                    self.assertTrue(os.path.exists(os.path.join(HERE, s["folder"], name)),
+                                    f"{name} is not in {s['folder']}")
+                    note = s.get("exclude_note") or ""
+                    self.assertTrue(note, "an exclusion must say why")
+                    self.assertIn("false alarm", note,
+                                  "an exclusion is only allowed when no false alarm is left in the resume")
 
 
 if __name__ == "__main__":

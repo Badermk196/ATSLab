@@ -78,11 +78,19 @@ class TestBugDetectors(unittest.TestCase):
         self.assertFalse(L.detect_b2(d, ana)[0])
 
     def test_spaced_name_only_says_name_only(self):
+        """A wide font splits the strict reading only and the readable text is normal ("ALAN ABBAS"), so no card
+        (5 Nov 2026). When the letters really are apart the card fires and says "name only"."""
         for name in ("AllanAbbas_Revolut", "MathewOsama_Jobgether", "Tammam_Versuni"):
             d = doc(name)
             found, detail = L.detect_b1(d, L.analyse(d))
-            self.assertTrue(found)
-            self.assertTrue(detail.startswith("name only"), detail)
+            self.assertFalse(found, detail)
+        made = fake_doc("S A N A  M A L I K\nSenior Programme Manager\n"
+                        "sana@mail.com | +971 50 123 4567 | Dubai, UAE\nSUMMARY\n"
+                        "Programme manager with fifteen years of programme delivery across the UAE and KSA.\n"
+                        "SKILLS\nProgramme delivery, Stakeholder management, Budgets")
+        found, detail = L.detect_b1(made, L.analyse(made))
+        self.assertTrue(found)
+        self.assertTrue(detail.startswith("name only"), detail)
 
     def test_text_bugs_on_made_up_text(self):
         clean = "JOHN SMITH\nProduct Manager\njohn@mail.com | +971 50 000 0000\nSUMMARY\nBuilt things."

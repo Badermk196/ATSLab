@@ -209,9 +209,14 @@ class TestQuotes(unittest.TestCase):
         finally:
             r.tearDown()
         res["_doc"] = doc
-        card = next(c for c in D.issue_cards(res) if c["key"] == "location")
-        self.assertEqual(D.evidence(card, res), [D.NOT_FOUND])
-        self.assertEqual(D.NOT_FOUND, "Not found in your resume")
+        # 2026-11-09: after the truth re-check the city check is scored again (17 of 17 confirmed files right). Its
+        # card quotes the contact line only, never the candidate's name.
+        card = next((c for c in D.issue_cards(res) if c["key"] == "location"), None)
+        self.assertIsNotNone(card, "a missing city is shown as a card again")
+        self.assertNotIn("ROWAN", (card.get("why") or "") + " ".join(card.get("evidence") or []))
+        t6 = res["structure_checks"]["T6"]
+        self.assertLess(t6["score"], 1.0)
+        self.assertNotIn("T6", [v["id"] for v in res["to_verify"]])
 
 
 class TestNameOverTwoLines(unittest.TestCase):

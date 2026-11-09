@@ -42,6 +42,10 @@ DECORATIVE_RE = re.compile(r"script|hand|brush|comic|pacifico|lobster|dancing|vi
 STYLE_RE = re.compile(r"[-,_ ]?(Bold|Italic|Oblique|Regular|Light|Medium|Semi[Bb]old|Demi[Bb]old|Extra[Bb]old|Black|"
                       r"Heavy|Thin|Condensed|Cond|Narrow|MT|PS|PSMT|Roman|Book|It|Bd|BoldItalic|BoldOblique)$")
 LOW_CONTRAST = 3.0             # WCAG minimum for large text
+CONTRAST_CHECK = False         # the "Light or low-contrast text" card (D8): switched off on 4 Nov 2026 - in a real
+#                              report it quoted ordinary resume text as "hard-to-read words" and took readability
+#                              points off a CV a person reads easily; it is about colors, which an ATS does not read
+#                              at all. True brings the card back exactly as it was.
 RENDER_DPI = 100               # page images shown in the dashboard
 CONTRAST_DPI = 150             # pixels used to measure text contrast
 PHOTO_MIN_PT = 40              # an image at least 40 x 40 pt is a photo / picture, smaller ones are icons
@@ -286,6 +290,33 @@ def _norm(s):
 # ---------------------------------------------------------------------------
 # columns
 # ---------------------------------------------------------------------------
+LABEL_MAX_WORDS = 4            # "Languages:" - a short label before its items
+CONTINUE_WORDS = {"and", "or", "for", "with", "to", "of", "the", "in", "on", "by", "from", "using", "while", "plus",
+                  "including", "as", "at", "that", "which", "across", "into", "over", "under", "per", "via", "etc"}
+
+
+def _label_or_indent_column(rows, x):
+    """True when the lines with text on both sides of x are one text line each: a short label and its items
+    ("Languages: Python, SQL"), a tab stop, or a sentence that carries on after the gap (a hanging indent). A real
+    column holds its own lines, so its paired lines do not look like that (5 Nov 2026: one-column Google Docs and
+    Word exports were read as two columns this way)."""
+    paired = hits = 0
+    for line in rows.values():
+        left = sorted((w for w in line if w["x1"] <= x), key=lambda w: w["x0"])
+        right = sorted((w for w in line if w["x0"] >= x), key=lambda w: w["x0"])
+        if not left or not right:
+            continue
+        paired += 1
+        ltext = " ".join(w["text"] for w in left).strip()
+        rtext = " ".join(w["text"] for w in right).strip()
+        first = (rtext.split() or [""])[0].lower()
+        if len(ltext.split()) <= LABEL_MAX_WORDS and ltext.endswith(":"):
+            hits += 1                                  # a label and its items on the same line
+        elif not re.search(r"[.!?:;]$", ltext) and (rtext[:1].islower() or first in CONTINUE_WORDS):
+            hits += 1                                  # one sentence, carried on after the gap
+    return hits >= 4 and hits >= 0.6 * paired
+
+
 def _vertical_cut(ws, box, page_h, min_h=MIN_REGION_HEIGHT):
     """Where a region splits into two columns: an x almost no word crosses (a few allowed, e.g. a wide name), a
     real gap on every shared line, text on both sides down most of the region, and the right side starting at one
@@ -326,6 +357,8 @@ def _vertical_cut(ws, box, page_h, min_h=MIN_REGION_HEIGHT):
                 gaps.append(min(w["x0"] for w in r_) - max(w["x1"] for w in l_))
         if gaps and min(gaps) < MIN_COLUMN_GAP:
             continue
+        if _label_or_indent_column(rows, x):
+            continue                                       # labels, a tab stop or a hanging indent: not a column
         if min_h >= MIN_REGION_HEIGHT and len(starts) < MIN_COLUMN_LINES:
             continue                                       # a few line ends past a gap are not a column
         edge = sorted(starts)[len(starts) // 2] if starts else 0
@@ -531,6 +564,8 @@ def find_columns(words, width, height):
                 gaps.append(min(w["x0"] for w in r_) - max(w["x1"] for w in l_))
         if gaps and min(gaps) < MIN_COLUMN_GAP:
             continue
+        if _label_or_indent_column(rows, x):
+            continue                                       # labels, a tab stop or a hanging indent: not a column
         if min_h >= MIN_REGION_HEIGHT and len(starts) < MIN_COLUMN_LINES:
             continue                                       # a few line ends past a gap are not a column
         edge = sorted(starts)[len(starts) // 2] if starts else 0
@@ -788,8 +823,8 @@ def _analyse_layout(pdf_path, doc=None, pages=None):
         f["D7"]["detail"] = "; ".join(reasons)
         f["D7"]["evidence"] = [f"{size:.1f} pt: \"{t}\"" for size, t in sorted(small_lines)[:2]] or [f["D7"]["detail"]]
 
-    # contrast
-    if len(low_words) + len(light_on_color) >= 5:
+    # contrast (switched off: see CONTRAST_CHECK above)
+    if CONTRAST_CHECK and len(low_words) + len(light_on_color) >= 5:
         f["D8"]["found"] = True
         for pno, box, t, *_ in (low_words + [(*x, 0) for x in light_on_color])[:40]:
             f["D8"]["boxes"].append((pno, *box, "Low contrast"))

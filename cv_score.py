@@ -35,13 +35,29 @@ import ATSLab_v3 as L
 import cv_cache as CC
 import cv_layout as Y
 import cv_review as R
+import cv_vision as VG
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = "google/gemini-2.5-flash"
 # Raise this whenever the result format changes: the dashboard reloads an older loaded copy of this module and
 # recalculates results made by an older version instead of crashing on missing data.
-SCORE_VERSION = "2026-10-30.v1.3"
+SCORE_VERSION = "2026-11-09.v1.5"
 ROLE_CACHE = os.path.join(HERE, "role_skills")      # AI skill lists per target role (extracted once)
+
+# Checks that were wrong too often when measured against the confirmed golden set (80 real resumes, truth read
+# from the rendered pages): they no longer change the score and no longer appear on the user page. They are
+# listed on the admin page as "To verify by the team" until they are fixed.
+UNRELIABLE_CHECKS = {
+    # 2026-11-09: only the checks that still miss or misfire on more than 10% of the golden set keep their finding
+    # for the team (the admin page shows "To verify by the team"). Brought back into the score after the rewrite and
+    # the truth re-check: T4B dates missing (5 of 5 right), T18 printed code (3 of 3 right), T4C dates not Mon YYYY
+    # (4 of 4 right on the confirmed truth) and T6 city (17 of 17 confirmed files right; the only "miss" is
+    # Rowan_Elatrache_CV.pdf, whose truth the team still has to confirm).
+    # T4D (no experience section found) came back too: 7 of 7 right after the headings were normalised (letter-spaced
+    # and numbered headings are now found) and after three fresh-graduate resumes with no experience were added.
+    "P5": "the old job item: the job details are now checked by T4, T4B, T4C and T4D",
+    "P6": "the old city item: the city is now checked by T6",
+}
 
 # The 1000jobs CV standard is the reference for every CV. Without a job description: 3 parts; with one, Job Match
 # keeps its 25% and the other three keep their proportions.
@@ -92,19 +108,27 @@ ONE_PAGE_YEARS = 10                    # 10+ years of experience on one page
 SHORT_SCORE = 0.5
 DETAIL_PER_ROLE, DETAIL_MIN, DETAIL_MAX = 3, 6, 15     # C18: bullets expected for the roles of the last 10 years
 RECENT_DETAIL_YEARS = 10
-# Completeness items and weights (sum 1.0)
-STRUCT_WEIGHT = {"T1": 0.14, "T2": 0.09, "T3": 0.10, "T4": 0.22, "T5": 0.10, "T6": 0.08, "T7": 0.10,
+# Completeness items and weights (sum 1.0). 2026-11-09: the one job card became four (title and company alone,
+# dates missing, dates not Mon YYYY, no experience section) and printed code or HTML got its own check. The old
+# T4 weight (0.22) is kept whole across the family (0.10 + 0.05 + 0.04 + 0.01) and the new check takes its 0.06
+# from that family, so no other check changed and the weights still add up to 1.0.
+STRUCT_WEIGHT = {"T1": 0.14, "T2": 0.09, "T3": 0.10, "T4": 0.06, "T4B": 0.05, "T4C": 0.04, "T4D": 0.01,
+                 "T18": 0.06, "T5": 0.10, "T6": 0.08, "T7": 0.10,
                  "T8": 0.07, "T9": 0.05, "T10": 0.02, "T11": 0.02, "T12": 0.0, "T13": 0.0, "T14": 0.0,
-                 "T15": 0.0, "T16": 0.01}
+                 "T15": 0.0, "T16": 0.01, "T17": 0.0}
+JOB_DATE_IDS = {"T4B", "T4C", "T4D"}                 # the split date checks (2026-11-09)
+PRINTED_CODE_IDS = {"T18"}                           # printed code or HTML in the text (2026-11-09)
 # a note only: it can cost its own (tiny) weight, never the extra points a failed standard costs
-NOTE_ONLY = {"T16"}
+NOTE_ONLY = {"T16", "T17"}
 STRUCT_NAME = {"T1": "Standard section names", "T2": "Only degrees under Education", "T3": "Phone in +code format",
-               "T4": "Every job has title, company and Mon YYYY dates", "T5": "LinkedIn URL",
+               "T4": "Every job has a title and a company", "T4B": "Job dates are present",
+               "T4C": "Job dates written as Mon YYYY", "T4D": "A work experience section is found",
+               "T18": "No printed code or HTML in the text", "T5": "LinkedIn URL",
                "T6": "City", "T7": "Email", "T8": "Skills section", "T9": "Degree, school and year",
                "T10": "Visa status, driving licence or notice period (UAE)", "T11": "One title per job",
                "T12": "Capital I used as a separator", "T13": "Numbered section headings",
                "T14": "Standard bullet symbols", "T15": "Standard page format (portrait, one column)",
-               "T16": "Job locations"}
+               "T16": "Job locations", "T17": "A course or program is listed under Experience"}
 COMPLETE_WEIGHT = {"P1": 0.15, "P2": 0.20, "P3": 0.10, "P4": 0.15, "P5": 0.30, "P6": 0.10}   # (older versions)
 COMPLETE_NAME = {"P1": "LinkedIn profile link", "P2": "Skills section", "P3": "Certifications",
                  "P4": "Education details", "P5": "Every job has title, company and dates", "P6": "Location"}
@@ -260,7 +284,10 @@ def analyse_cv(doc):
             header.append(r)
     sections = L.synthesize_experience(sections)         # jobs under company names, no 'Experience' heading
     exp_lines = [r["text"].strip() for s in sections if s["kind"] == "experience" for r in s["rows"]]
-    jobs = L.parse_jobs(exp_lines)
+    parsed = L.parse_jobs(exp_lines)
+    jobs, programs = [], []                          # a course / program under Experience is not a job: see
+    for j in parsed:                                 # is_program_entry. It is kept out of every job check.
+        (programs if is_program_entry(exp_lines[j["line"]: j["line"] + 2]) else jobs).append(j)
     recent_from = L.TODAY.year - L.RECENT_YEARS
     chunks = [(" ".join(r["text"] for r in header), L.OLD_LOCATION)]
     for s in sections:
@@ -268,9 +295,9 @@ def analyse_cv(doc):
         if s["kind"] in ("skills", "competencies"):
             chunks.append((" ".join(texts), 1.0))
         elif s["kind"] == "experience":                  # as in v3: recent jobs count fully, older ones less
-            starts = [j["line"] for j in jobs] + [len(exp_lines)]
+            starts = [j["line"] for j in parsed] + [len(exp_lines)]
             offset = sum(len(x["rows"]) for x in sections[:sections.index(s)] if x["kind"] == "experience")
-            mine = [j for j in jobs if offset <= j["line"] < offset + len(texts)]
+            mine = [j for j in parsed if offset <= j["line"] < offset + len(texts)]
             if not mine:
                 chunks.append((" ".join(texts), L.OLD_LOCATION))
                 continue
@@ -282,7 +309,7 @@ def analyse_cv(doc):
                                1.0 if recent else L.OLD_LOCATION))
         else:
             chunks.append((" ".join(texts), L.OLD_LOCATION))
-    return {"header": header, "sections": sections, "jobs": jobs,
+    return {"header": header, "sections": sections, "jobs": jobs, "programs": programs,
             "chunks": [(L.tokens(t), m) for t, m in chunks if t.strip()]}
 
 
@@ -301,7 +328,13 @@ def experience_items(ana):
 
 def experience_items_by_job(ana):
     """-> [(text, written as a bullet?, job index or None)]."""
-    lines = [r["text"].strip() for s in ana["sections"] if s["kind"] == "experience" for r in s["rows"]]
+    lines, section_start = [], set()
+    for s in ana["sections"]:
+        if s["kind"] != "experience":
+            continue
+        if s["rows"]:
+            section_start.add(len(lines))       # a new Experience section ("Earlier Career" ...): the job above it is
+        lines += [r["text"].strip() for r in s["rows"]]     # over, so its lines are never counted under that job
     skip = set()
     # the job lines, and job headers the job list missed (a long 'Title | Company, City, Mon YYYY - Mon YYYY'): a
     # bullet is never joined with them. Each with the short line under it (company / title).
@@ -315,8 +348,23 @@ def experience_items_by_job(ana):
     job_at = {j["line"]: k for k, j in enumerate(ana["jobs"])}
     items, cur, is_bullet, job, cur_job = [], [], False, None, None     # items: (text, bullet?, job)
     for i, l in enumerate(lines):
+        if i in section_start:
+            if cur:                             # close the statement being read at the section break
+                items.append((" ".join(cur), is_bullet, cur_job))
+                cur = []
+            job = None
+            if is_heading_cv(l):                # the heading itself is never a bullet
+                continue
         if i in job_at:
             job = job_at[i]
+        if (i not in job_at) and (is_heading_cv(l) or job_header(l)):
+            # a heading or a role line the job list did not catch ("EARLIER CAREER", a role with year-only dates):
+            # the lines under it belong to that part, never to the job above it
+            if cur:
+                items.append((" ".join(cur), is_bullet, cur_job))
+                cur = []
+            job = None
+            continue
         if i in skip or L.date_only(l) or LABEL_LINE_RE.match(l):
             if cur:
                 items.append((" ".join(cur), is_bullet, cur_job))
@@ -580,6 +628,10 @@ def rule_severity(iid, cc=None, pc=None, res=None, design=None):
         return "Major"
     if iid == "T4":                                   # Important when a job's dates are missing or year-only
         return "Major" if c.get("date_problems") else "Minor"
+    if iid in ("T4B", "T4C"):
+        return "Major"                                # job dates missing or not written as Mon YYYY
+    if iid in PRINTED_CODE_IDS:
+        return "Major"                                # an ATS reads "<span style=...>" as text
     if iid == "T3":                                   # no phone at all: Important; a phone in another format: Minor
         return "Major" if c.get("detail") == "no phone number" else "Minor"
     if iid in EMAIL_IDS or iid in DATE_IDS:
@@ -722,6 +774,96 @@ def is_city(segment):
                                        for w in words)
 
 
+# --- printed code or HTML in the resume text (2026-11-09) -----------------------------------------------------
+# A real ATS reads "<span style=...>" as text, and some readers also drop the line. Measured on the golden set:
+# the generator wrote these on job lines, so the job line could not be parsed at all.
+PRINTED_CODE_RE = re.compile(r"<\s*/?\s*[a-zA-Z][^>\n]{0,90}>|&(?:nbsp|amp|quot|lt|gt|#\d{2,5});|"
+                             r"[a-zA-Z-]+\s*=\s*\"[^\"]{0,60}\"\s*/?>")
+EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF\u2190-\u21FF\u2B00-\u2BFF\uFE0F]")
+MONTHYEAR_RE = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s*,?\s*"
+                          r"('?\d{2}|\d{4})\b", re.I)
+YEAR_ANY_RE = re.compile(r"\b(19|20)\d{2}\b")
+# a city named in the contact block. The UAE and the usual GCC / South Asia / Europe / North America cities.
+CITY_NAMES_RE = re.compile(
+    r"\b(Dubai|Abu Dhabi|Sharjah|Ajman|Fujairah|Ras Al Khaimah|Umm Al Quwain|Al Ain|"
+    r"Riyadh|Jeddah|Dammam|Doha|Kuwait City|Manama|Muscat|Salalah|Cairo|Alexandria|Amman|Beirut|Baghdad|Erbil|"
+    r"Karachi|Lahore|Islamabad|Rawalpindi|Faisalabad|Multan|Peshawar|Quetta|Hyderabad|Mumbai|Bombay|Bangalore|"
+    r"Bengaluru|Chennai|Madras|Pune|Kolkata|Calcutta|New Delhi|Delhi|Noida|Gurgaon|Gurugram|Ahmedabad|"
+    r"Kochi|Cochin|Coimbatore|Thiruvananthapuram|Colombo|Dhaka|Chattogram|Chittagong|Kathmandu|Kabul|"
+    r"Kuala Lumpur|Singapore|Jakarta|Manila|Cebu|Bangkok|Hanoi|Ho Chi Minh City|"
+    r"London|Manchester|Birmingham|Leeds|Glasgow|Edinburgh|Dublin|Paris|Lyon|Berlin|Munich|Hamburg|Frankfurt|"
+    r"Amsterdam|Rotterdam|Brussels|Madrid|Barcelona|Rome|Milan|Lisbon|Porto|Zurich|Geneva|Vienna|Warsaw|Prague|"
+    r"Budapest|Bucharest|Sofia|Athens|Istanbul|Ankara|Moscow|Kyiv|"
+    r"Toronto|Vancouver|Montreal|Calgary|Ottawa|New York|Jersey City|Boston|Chicago|Seattle|San Francisco|"
+    r"Los Angeles|Austin|Dallas|Houston|Atlanta|Miami|Denver|Phoenix|Washington|"
+    r"Nairobi|Lagos|Abuja|Accra|Johannesburg|Cape Town|Casablanca|Tunis|Algiers|Addis Ababa|"
+    r"Sydney|Melbourne|Brisbane|Perth|Auckland|Tokyo|Osaka|Seoul|Shanghai|Beijing|Shenzhen|Hong Kong|Taipei)\b",
+    re.I)
+# a country (or an emirate) alone is a location, but it is not a city
+COUNTRY_ONLY = {"uae", "u.a.e", "united arab emirates", "emirates", "india", "pakistan", "bangladesh", "sri lanka",
+                "nepal", "philippines", "egypt", "jordan", "lebanon", "iraq", "qatar", "kuwait", "bahrain", "oman",
+                "saudi arabia", "ksa", "syria", "yemen", "turkey", "uk", "united kingdom", "england", "ireland",
+                "usa", "united states", "united states of america", "canada", "germany", "france", "spain", "italy",
+                "netherlands", "belgium", "switzerland", "austria", "poland", "czech republic", "portugal", "greece",
+                "nigeria", "kenya", "ghana", "south africa", "morocco", "tunisia", "ethiopia", "australia",
+                "new zealand", "japan", "south korea", "china", "hong kong", "singapore", "malaysia", "indonesia",
+                "thailand", "vietnam", "russia", "ukraine", "afghanistan"}
+SPLIT_SEG_RE = re.compile(r"[|\u00b7\u2022\u2013\u2014/,()\[\]{};&]|(?:\s-\s)|(?:[a-zA-Z]\s-\s)")
+CITY_PAIR_RE = re.compile(r"\b([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,2}),\s*"
+                          r"([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,2})\b")
+# a grouped career line ("Earlier Career | Telecom Sector 2004 - 2010"), an education entry, and a date written as
+# two separate periods ("2016-2017 & 2023-2024") are NOT "job dates written in the wrong format" (confirmed by the
+# team on the golden set, 2026-11-09)
+GROUP_ENTRY_RE = re.compile(r"\b(earlier career|early career|previous roles|prior roles|career history|"
+                            r"other roles|previous experience|career summary|career break)\b", re.I)
+EDU_ENTRY_RE = re.compile(r"\b(university|bachelor|master|b\.?sc|m\.?sc|m\.?b\.?a|ph\.?d|degree|diploma|college|"
+                          r"institute|academy|graduat\w+|certificat\w*|course|internship programme)\b", re.I)
+MULTI_PERIOD_RE = re.compile(r"\b(?:19|20)\d{2}\s*[-\u2013\u2014]\s*(?:(?:19|20)\d{2}|present|current)\s*"
+                             r"(?:&|,|and|\+)\s*(?:19|20)?\d{2}", re.I)
+
+
+def strip_printed_code(text):
+    """The text as an ATS would read it: printed code and HTML entities are removed, so a date inside a
+    <span> can still be found."""
+    text = PRINTED_CODE_RE.sub(" ", text or "")
+    return re.sub(r"\s{2,}", " ", text)
+
+
+def printed_code_lines(text):
+    """The lines of the resume text that carry printed code or HTML (the exact text an ATS would read)."""
+    out = []
+    for line in (text or "").splitlines():
+        if PRINTED_CODE_RE.search(line):
+            out.append(re.sub(r"\s{2,}", " ", line.strip())[:160])
+    return out
+
+
+def contact_text_for_city(doc, ana, found_loc=None):
+    """The contact lines as plain text, with emojis, pins and printed code removed.
+
+    The contact block and the first header lines are read. The location the fields parser found is NOT added: it can
+    come from a job line far down the page ('... - Sharjah, UAE'), and a place inside a job is not the candidate's
+    city (that mistake was measured on the golden set, 2026-11-09)."""
+    lines = contact_block(doc) + [x["text"] for x in ana["header"][:3]]
+    text = strip_printed_code(" | ".join(lines))
+    return EMOJI_RE.sub(" ", text)
+
+
+def city_name_in(text):
+    """The city written in the contact text, or None. 'Dubai . United Arab Emirates' -> 'Dubai';
+    'Majaz 2, Sharjah, UAE' -> 'Sharjah'; 'United Arab Emirates' alone -> None (that is a country)."""
+    m = CITY_NAMES_RE.search(text or "")
+    if m:
+        return m.group(0)
+    for m in CITY_PAIR_RE.finditer(text or ""):        # 'Tehran, Iran' / 'Dubai, United Arab Emirates'
+        first, second = m.group(1).strip(), m.group(2).strip()
+        if first.lower().strip(".") in COUNTRY_ONLY or len(L.tokens(first)) > 3:
+            continue
+        if second.lower().strip(".") in COUNTRY_ONLY or L.is_place(second):
+            return first
+    return None
+
+
 def completeness_checks(doc, ana, res):
     f = L.ats_fields(doc, ana)
     c = {}
@@ -793,7 +935,37 @@ COMMON_ABBR = {"KPI", "KPIs", "UX", "UI", "AI", "CEO", "CFO", "COO", "CTO", "USD
 RESULT_NUMBER_RE = re.compile(r"(?<![\w.])(?:[$\u20ac\u00a3]|AED\s?|USD\s?)?\d[\d,.]*(?:\s?(?:%|[KMB]\b|\+|x\b))?", re.I)
 NOT_PRESENT = {"led", "founded", "co-founded", "set", "cut", "put", "read", "run", "spread", "found"}
 OLD_YEARS = 10
-OLD_MAX_BULLETS = 2
+OLD_MAX_BULLETS = 3            # 4+ bullets on a role that ended 10+ years ago is worth a card (3 was too strict)
+
+# A training program listed under Experience ("AI Career Accelerator - Inner Circle | Be10X | Aug 2026 - Present") is
+# not a job. It is only treated as a program when the case is clear: the title holds no job role AND a program word
+# (or a known training provider) is there. Anything unclear is left alone.
+JOB_ROLE_RE = re.compile(r"\b(manager|director|head|lead|leader|engineer|developer|programmer|consultant|specialist|"
+                         r"expert|scientist|analyst|officer|executive|president|founder|co-founder|owner|partner|"
+                         r"associate|coordinator|supervisor|administrator|advisor|architect|designer|accountant|"
+                         r"auditor|controller|technician|nurse|doctor|teacher|tutor|recruiter|buyer|planner|"
+                         r"strategist|marketer|editor|writer|trainee|intern|apprentice|assistant|representative|"
+                         r"agent|operator|chef|driver|freelance[r]?|contract(?:or|ing)?|part[\s-]?time|"
+                         r"pro[\s-]?bono|vice president|vp|chief)\b", re.I)
+# Only a TITLE that names a program makes an entry a course / program. An organisation that teaches is not enough:
+# the same provider also hires people ("Freelance AI Consultant | Coursera" is a job).
+PROGRAM_WORD_RE = re.compile(r"\b(accelerator|boot\s?camp|course|courses|programme|program|cohort|certificate|"
+                             r"certification|nanodegree|speciali[sz]ation|fellowship|masterclass|scholarship|"
+                             r"upskilling|reskilling)\b", re.I)
+PROGRAM_NOTE = ("This looks like a course or program. Consider listing it under Certifications or Professional "
+                "Development, so recruiters don't read it as a job.")
+
+
+def is_program_entry(head_lines):
+    """head_lines: the entry's header line and the line under it (title / organisation), when there is one.
+    True only when the entry clearly is a course or a program and not a job: the TITLE names a program (Accelerator,
+    Bootcamp, Course, Programme, Cohort, Certificate ...) and holds no job-role word. A role title is always a job,
+    even when the organisation is a learning or training provider."""
+    text = " ".join(x for x in head_lines if x)
+    title = re.split(r"\s[\|\u2013\u2014-]\s|,", text)[0].strip()
+    if JOB_ROLE_RE.search(title):
+        return False
+    return bool(PROGRAM_WORD_RE.search(title))
 
 
 def is_present_tense(word):
@@ -918,6 +1090,7 @@ PLAIN_YEAR_RE = re.compile(r"(?<![\w.,$])(?:19|20)\d\d(?![\w%])")
 
 
 SENTENCE_MAX = 220
+ABBR_MIN = 2               # how many abbreviations without their full form are worth a card (1 was too noisy)
 
 
 def abbreviation_quotes(text, short):
@@ -1034,6 +1207,9 @@ def standard_content_checks(doc, ana):
     flat = re.sub(r"[\s\-]+", " ", doc["modern"].lower())
     short = [a for a in used if re.sub(r"[\s\-]+", " ", ABBR_FULL[a]) not in flat]
     short = [a for a in short if not (a.endswith("s") and a[:-1] in ABBR_FULL and a[:-1] in short)]
+    # 4 Nov 2026: one abbreviation on its own is not worth a card (it read as noise in a real report). Two or more are
+    # a pattern worth fixing (ABBR_MIN). Nothing else changes.
+    short = short if len(short) >= ABBR_MIN else []
     c["C12"] = {"score": max(0.0, 1 - 0.25 * len(short)),
                 "detail": "never written in full: " + (", ".join(short) or "none"),
                 "evidence": abbreviation_quotes(doc["modern"], short)}
@@ -1180,39 +1356,74 @@ def structure_checks(doc, ana, res):
     raw = job_lines(ana)
     jobs = f["jobs"]
     bad, dates_bad, only_dates, no_place = [], [], True, []
+    no_date, not_month = [], []
+    lines_all = [r["text"] for s_ in ana["sections"] if s_["kind"] == "experience" for r in s_["rows"]]
     for j, aj in zip(jobs, ana["jobs"]):
         line = raw(aj)
-        nxt_lines = [r["text"] for s_ in ana["sections"] if s_["kind"] == "experience" for r in s_["rows"]]
-        around = "\n".join(nxt_lines[max(0, aj["line"] - 1): aj["line"] + 3])
+        # The job's own line and the next one (company or place) decide the FORMAT. A three-line window only decides
+        # "is there any date at all". 2026-11-09: the format must come from the job's own date line - reading a
+        # nearby year (an Education year, or a grouped line such as "Earlier Career | Telecom Sector 2004 - 2010")
+        # made the check wrong on 10 of the 14 files the team reviewed. Printed code is removed first, so a date
+        # inside a <span> still counts (the printed code itself is its own check, T18).
+        own = lines_all[aj["line"]] if 0 <= aj["line"] < len(lines_all) else line
+        nxt = lines_all[aj["line"] + 1] if 0 <= aj["line"] + 1 < len(lines_all) else ""
+        own_text = strip_printed_code((own + "\n" + nxt).strip())
+        window = strip_printed_code("\n".join(lines_all[max(0, aj["line"] - 1): aj["line"] + 2]))
+        around = "\n".join(lines_all[max(0, aj["line"] - 1): aj["line"] + 3])
+        grouped = bool(GROUP_ENTRY_RE.search(own_text)) or bool(EDU_ENTRY_RE.search(own_text))
+        multi = bool(MULTI_PERIOD_RE.search(aj.get("dates") or "")) or bool(MULTI_PERIOD_RE.search(own_text))
+        has_month = (bool(aj["has_range"]) and aj["problem"] is None) or bool(MONTHYEAR_RE.search(own_text))
+        has_any_date = has_month or bool(YEAR_ANY_RE.search(window)) or bool(L.RANGE_RE.search(window))
         title_why = "no title" if not j["title"] else None if MERGED_TITLE_RE.search(j["title"]) \
             else j["title_problem"]
         if not has_location(around):                  # a job location is NOT required: a note of its own (T16)
             no_place.append(line)
-        miss = ([title_why] if title_why else []) + \
-            [x + " missing" for x, okx in (("company", j["company"]),
-                                           ("Mon YYYY dates", aj["has_range"] and aj["problem"] is None)) if not okx]
-        if miss == ["Mon YYYY dates missing"] and aj["dates"]:      # only the dates are wrong: quote the date line
+        if not has_any_date:                                   # no date at all on the entry (T4B)
+            if not grouped:                                    # a grouped career line or an education entry
+                no_date.append(f"{line}  (no dates)")
+        elif not has_month and not (grouped or multi):          # a date is there, but not Mon YYYY (T4C)
+            not_month.append(f"{aj['dates'] or line}  ({aj['problem'] or 'year only'})")
             dates_bad.append((aj["dates"], aj["problem"] or "no month"))
-            bad.append((f"{aj['dates']}  ({aj['problem'] or 'no month'})", None))
-        elif miss:
+        miss = ([title_why] if title_why else []) + ([] if j["company"] else ["company missing"])
+        if miss:
             only_dates = False
             bad.append((line + (f" / {j['title']}" if j["title"] and j["title"] not in line else ""), miss))
-            if "Mon YYYY dates missing" in miss:
-                dates_bad.append((aj["dates"], aj["problem"] or "no date"))
-    c["T4"] = {"score": 1 - len(bad) / len(jobs) if jobs else 0.0,
-               "detail": f"{len(jobs) - len(bad)} of {len(jobs)} jobs have title, company and Mon YYYY dates",
+    c["T4"] = {"score": 1 - len(bad) / len(jobs) if jobs else 1.0,
+               "detail": f"{len(jobs) - len(bad)} of {len(jobs)} jobs have a title and a company",
                "evidence": [l if m is None else f"{l}  ({', '.join(m)})" for l, m in bad][:3],
                "dates_only": bool(bad) and only_dates, "date_problems": [p_ for _, p_ in dates_bad],
                "date_lines": [d for d, _ in dates_bad if d]}
+    c["T4B"] = {"score": 1 - len(no_date) / len(jobs) if jobs else 1.0,
+                "detail": f"{len(no_date)} of {len(jobs)} jobs show no dates" if jobs
+                          else "no work experience section found",
+                "evidence": no_date[:3]}
+    c["T4C"] = {"score": 1 - len(not_month) / len(jobs) if jobs else 1.0,
+                "detail": f"{len(not_month)} of {len(jobs)} jobs are not written as Mon YYYY" if jobs
+                          else "no work experience section found",
+                "evidence": not_month[:3]}
+    c["T4D"] = {"score": 1.0 if jobs else 0.0, "detail": f"{len(jobs)} job entr(ies) found" if jobs
+                else "no work experience section found",
+                "evidence": [] if jobs else [x["text"] for x in ana["header"][:2]]}
     c["T16"] = {"score": 1 - len(no_place) / len(jobs) if jobs else 1.0,
                 "detail": f"{len(jobs) - len(no_place)} of {len(jobs)} jobs show a location",
                 "evidence": [f"{l}  (location missing)" for l in no_place][:3]}
+    programs = ana.get("programs") or []               # a course / program under Experience: a note only (T17),
+    c["T17"] = {"score": 0.0 if programs else 1.0,     # never a job-card (no location, dates or titles)
+                "detail": PROGRAM_NOTE,
+                "evidence": [raw(j) for j in programs][:2]}
     li = L.LINKEDIN_RE.search(doc["modern"])
     c["T5"] = {"score": float(bool(li)), "detail": li.group(0) if li else "no LinkedIn URL (linkedin.com/in/...)",
                "evidence": [x["text"] for x in ana["header"][:3]]}
     loc = find_location_any(doc, f)
-    city = bool(loc) and ("," in loc or is_city(loc.split(",")[0]))
-    c["T6"] = {"score": float(city), "detail": loc or "no city", "evidence": [x["text"] for x in ana["header"][:3]]}
+    contact_txt = contact_text_for_city(doc, ana, loc)
+    city = city_name_in(contact_txt)
+    c["T6"] = {"score": float(bool(city)), "detail": city or loc or "no city",
+               "evidence": [x["text"] for x in ana["header"][:3]]}
+    code = printed_code_lines(doc["modern"])
+    c["T18"] = {"score": 0.0 if code else 1.0,
+                "detail": f"{len(code)} line(s) of printed code or HTML in the text" if code
+                          else "no printed code",
+                "evidence": code[:3]}
     c["T7"] = {"score": float(bool(f["email"])), "detail": f["email"] or "no email",
                "evidence": [x["text"] for x in ana["header"][:3]]}
     nskills = sum(L.count_skill_items(s_["rows"]) for s_ in ana["sections"] if s_["kind"] in ("skills", "competencies"))
@@ -2035,8 +2246,48 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
         if layout and layout["columns_found"] else None
     col_checks = (STANDARD_OWNS + ("R12",)) if col_owner else ()
     base_fixed = [x for x in STANDARD_OWNS if x not in col_checks]
+    # rule 2b: the rendered page decides on every layout card (columns, a sidebar, landscape, letter-spaced
+    # headings, a letter-spaced name). When the Lab's own rule and the page disagree, the problem is not scored
+    # and not shown to the user: it is listed on the admin page as "To verify by the team" instead.
+    page_truth = VG.page_layout(cv_path) if (os.path.isfile(cv_path) and not safe) else {"ok": False}
+    to_verify = []
+
+    def hold_for_team(iid, name, why, detail=""):
+        to_verify.append({"id": iid, "name": name, "why": why, "detail": detail})
+
+    if page_truth.get("ok"):
+        if design.get("D4", {}).get("found") and not page_truth["columns"]:
+            hold_for_team("D4", design["D4"]["label"], "the rendered page shows one column",
+                          design["D4"].get("detail", ""))
+            design.pop("D4", None)
+        if design.get("D3", {}).get("found") and not (page_truth["sidebar"] or page_truth["columns"]):
+            hold_for_team("D3", design["D3"]["label"], "the rendered page shows one column, with no sidebar",
+                          design["D3"].get("detail", ""))
+            design.pop("D3", None)
+        if design.get("D12", {}).get("found") and not page_truth["landscape"]:
+            hold_for_team("D12", design["D12"]["label"], "the rendered page is portrait",
+                          design["D12"].get("detail", ""))
+            design.pop("D12", None)
+        if layout is not None and not (page_truth["columns"] or design.get("D3", {}).get("found")
+                                       or design.get("D4", {}).get("found")):
+            layout["columns_found"] = False
+        if layout is not None and not page_truth["landscape"]:
+            layout["landscape"] = False
+        if not (page_truth["name_spaced"] or page_truth["headings_spaced"]):
+            # no letter-spaced line on the page at all: the letter-spacing rule is a false alarm here
+            b1_rule = next((b for b in res["bugs"] if b["code"] == "B1"), None)
+            if b1_rule and b1_rule["found"]:
+                ratios = ", ".join(str(h["ratio"]) for h in page_truth["spaced_headings_checked"][:3])
+                hold_for_team("B1", b1_rule["name"],
+                              "the page shows no letter-spaced line"
+                              + (f" (measured letter gap {ratios} of the font size)" if ratios else ""),
+                              b1_rule.get("detail", ""))
+                if "B1" not in skip:
+                    skip.append("B1")
+                    base_fixed += ["R5"]
     b1 = next(b for b in res["bugs"] if b["code"] == "B1")
-    if b1["found"] and b1["detail"].startswith("name only"):
+    if b1["found"] and b1["detail"].startswith("name only") \
+            and (not page_truth.get("ok") or page_truth["name_spaced"]):
         # only the NAME is letter-spaced: one root cause ("Name has letter spacing"), not a headings problem,
         # and the name / headline checks it breaks are part of the same card
         skip.append("B1")
@@ -2062,6 +2313,14 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
     cc["C8"] = ai_check(ai_content)
     pc = structure_checks(vdoc, vana, res)
     pc.update(format_notes(notes))
+    # rule 4b: a check that was wrong too often when measured against the confirmed golden set stops changing
+    # the score and stops appearing on the user page. It is listed for the team on the admin page instead.
+    for iid, why in UNRELIABLE_CHECKS.items():
+        c = pc.get(iid)
+        if c and c.get("score") is not None and c["score"] < 1:
+            hold_for_team(iid, STRUCT_NAME.get(iid) or COMPLETE_NAME.get(iid) or iid,
+                          "right too seldom on the golden set: " + why, c.get("detail", ""))
+            pc[iid] = {**c, "score": 1.0, "rule_score": c["score"], "moved_to_verify": True}
     limits = layout_limits(layout, design)            # rule 3
     d11 = design.get("D11") or {}
     limits["pages_cap"] = CAP_PAGES if d11.get("found") and layout["pages"] >= max(PAGES_CAP_TIMES * d11["limit"],
@@ -2152,7 +2411,12 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
     # template alone causes (reading order, name / headings / skills hard to read, what the ATS misses in columns)
     # are points inside this card, not separate cards.
     tpl_ids = TEMPLATE_IDS | ({"B2", "R9"} if comp_skills >= 8 else set())
-    reasons = template_reasons(layout, design, b1)
+    # the page decides on letter spacing too: when the page shows no letter-spaced line, the strict-parser finding
+    # must not reach the template card either (measured on the golden set: 26 such findings, all false alarms)
+    b1_page = b1
+    if page_truth.get("ok") and not (page_truth["name_spaced"] or page_truth["headings_spaced"]):
+        b1_page = {**b1, "found": False}
+    reasons = template_reasons(layout, design, b1_page)
     tpl = [i for i in issues if i["part"] == "readability" and i["id"] in tpl_ids] if reasons else []
     if tpl:
         reads = [set(), set(), set()]
@@ -2289,6 +2553,7 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
             "parts_before_limits": {k: round(v, 1) for k, v in raw.items()},
             "layout_limits": {k: v for k, v in limits.items()},
             "content_checks": cc, "structure_checks": pc, "issues": issues,
+            "to_verify": to_verify,
             "missing_skills": missing, "missing_required": missing_required, "experience_years": round(years, 1), "role_source": role_source,
             "name_line": read_name_line(cv_path, vana) if layout else None, "_doc": doc,
             "layout": None if not layout else {"pages": layout["pages"], "columns_found": layout["columns_found"],

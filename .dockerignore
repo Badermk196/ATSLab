@@ -1,4 +1,6 @@
 # Only the app goes into the image: no secrets, no resumes, no history, no test data.
+# The private folders below hold real user data (resumes, reports, job descriptions, AI reviews):
+# they must never be packed into an image or uploaded.
 .streamlit/secrets.toml
 data/
 release-*/
@@ -35,3 +37,12 @@ aiApply.cvs/
 reports/
 *.bat
 *.ico
+# this session's working files (screenshots, drafts, test data, logs) and the packed results
+.work/
+outputs/
+sidebar_check/
+sidebar_check.py
+# the live server's secrets and the deployment folder: they never go into the image
+.env
+deploy/
+golden_extra/

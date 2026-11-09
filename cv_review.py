@@ -109,7 +109,8 @@ def clean(raw, cv_texts):
         if item["severity"] == "Critical":
             item["severity"] = "Major"                           # an AI finding is Important at most, never Critical
         item["type"] = "unusual" if item["type"].lower() == "unusual" else "content"
-        if item["severity"] == "Minor" or is_nitpick(item) or is_gap_finding(item):   # Important only, no nitpicks,
+        if item["severity"] == "Minor" or is_nitpick(item) or is_gap_finding(item) \
+                or false_contact(item, cv_texts):                                     # Important only, no nitpicks,
             rejected.append(item)                                                      # no gaps
             continue
         same = any(norm(k["issue"]) == norm(item["issue"]) for k in kept)        # one card per problem
@@ -132,6 +133,19 @@ MORE_RE = re.compile(r"more (?:context|detail|specific)|lacks? (?:context|detail
 SUMMARY_LENGTH_RE = re.compile(r"summary|profile", re.I)
 LENGTH_WORDS_RE = re.compile(r"(?<!\w)(too long|too short|long|short|length|lengthy|wordy|brief|concise|word count|dense)(?!\w)",
                              re.I)
+CONTACT_RE = re.compile(r"contact (?:details|information|block|line)|contact details", re.I)
+EMAIL_ANY_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+PHONE_ANY_RE = re.compile(r"\+\s*\d[\d\s\-().]{7,}")
+
+
+def false_contact(item, cv_texts):
+    """A finding about the contact block is only kept when the CV really is missing a full email or a phone with a
+    country code. 4 Nov 2026: a real report showed an "Inconsistent contact information" card for a CV whose email and
+    phone are both there and complete - the AI was reading a header that the PDF wrapped over two lines."""
+    if not CONTACT_RE.search(item["issue"] + " " + item["why"]):
+        return False
+    text = " ".join(t or "" for t in cv_texts)
+    return bool(EMAIL_ANY_RE.search(text)) and bool(PHONE_ANY_RE.search(text))
 
 
 def is_nitpick(item):

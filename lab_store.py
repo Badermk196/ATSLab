@@ -320,6 +320,45 @@ class Store:
     def clear_setting(self, key):
         self._run("DELETE FROM settings WHERE key = ?", (key,))
 
+    # --- a clean start (reset_data.py) -----------------------------------------------------------------------
+    DATA_TABLES = ("checks", "admin_log", "daily_checks", "login_guard")
+
+    def clear_data(self):
+        """A clean start: empty History and Needs review (their notes and "Reviewed by" go with the rows), empty
+        Activity log, no daily check counts (the daily limit starts fresh for everybody), no sign-in lock counters,
+        and no kept resume file.
+
+        What stays: the database file and its tables (Structures never change), the settings an admin saved on the
+        Settings view (links, days, limits, the "Needs review" rules) and the admin accounts (they come from the
+        secrets, not from here). Nothing is written to the activity log: it must stay empty.
+
+        -> {table: rows removed, ..., "files": files removed}.
+        """
+        with self._lock:
+            con = self.db()
+            try:
+                with con:
+                    gone = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in self.DATA_TABLES}
+                    for t in self.DATA_TABLES:
+                        con.execute(f"DELETE FROM {t}")
+                    try:                            # new rows start at 1 again
+                        con.execute("DELETE FROM sqlite_sequence WHERE name IN ('checks', 'admin_log')")
+                    except sqlite3.OperationalError:
+                        pass
+            finally:
+                con.close()
+        gone["files"] = 0
+        for name in sorted(os.listdir(self.files)):       # the kept resume files (and any file nobody points to)
+            path = os.path.join(self.files, name)
+            if os.path.isfile(path):
+                try:
+                    os.remove(path)
+                    gone["files"] += 1
+                except OSError:
+                    pass
+        self._last_clean = None
+        return gone
+
 
 COLUMNS = ("created_at", "checked_by", "candidate", "file_name", "file_path", "file_deleted_at", "with_job",
            "job_title", "score", "label", "parts", "issues", "review_reasons", "reviewed_by", "reviewed_at",
@@ -385,7 +424,7 @@ def review_reasons(r, cards, rules=None):
     return reasons_for(review_facts(r, cards), rules)
 
 
-def record_of(r, checked_by, job_title=None, previous=None, client=False):
+def record_of(r, checked_by, job_title=None, previous=None, client=False, swap=None):
     """The history row of one check (the full report included, so it can be opened again)."""
     import dashboard as D
     cards = D.issue_cards(r)
@@ -397,5 +436,5 @@ def record_of(r, checked_by, job_title=None, previous=None, client=False):
            "compared_with": previous.get("cv") if previous is not None else None,
            "report_body": D.report_body(r, cards, all_open=True), "report_doc": D.report_document(r, cards)}
     if client and previous is not None:
-        rec["comparison_doc"] = D.comparison_document(previous, r)
+        rec["comparison_doc"] = D.client_document(r, previous, swap)   # the roles, decided once (see client_pair)
     return rec

@@ -19,6 +19,7 @@ import html
 import importlib
 import os
 import re
+import sys
 import tempfile
 import time
 
@@ -34,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = C.MODEL
 # The result format this page needs. A dashboard that keeps running while cv_score.py / cv_layout.py change on
 # disk still has the OLD modules in memory (Streamlit re-runs this file only): they are reloaded when older.
-SCORE_VERSION = "2026-10-30.v1.3"
+SCORE_VERSION = "2026-11-09.v1.5"
 # the AI recruiter review (saved per CV); ATSLAB_AI_REVIEW=0 switches it off (tests, no cost)
 AI_REVIEW = os.environ.get("ATSLAB_AI_REVIEW", "1") != "0"
 JOB_CACHE = os.path.join(HERE, "dashboard_jobs")   # pasted jobs + their _keywords_v3.json (extracted once)
@@ -152,7 +153,7 @@ ISSUES = {
                 "fix": "Cut the summary to a short paragraph of 150 words at most.",
                 "we_fix": "We write a focused summary built around your target role."},
     "name_spacing": {"ids": ["N1"], "name": "Name has letter spacing", "show": "spaced",
-                     "why": "The ATS may read a letter-spaced name as single letters (\"M O H A M E D\"), so your "
+                     "why": "The ATS may read a letter-spaced name as single letters, so your "
                             "profile can be saved under a wrong name.",
                      "fix": "Write your name with normal spacing; make it bigger or bold instead.",
                      "we_fix": "We write your name in normal letters, larger and bold, so every ATS reads it."},
@@ -286,15 +287,43 @@ ISSUES = {
                           "why": "Recruiters expect the degree, the school and the year for each qualification.",
                           "fix": "Write the degree, the school and the year for each qualification.",
                           "we_fix": "We list each degree with its school and year."},
-    "job_details": {"ids": ["P5", "T4"], "name": "Some jobs miss a title, company or Mon YYYY dates",
-                    "show": "quotes",
-                    "why": "Each job needs a title, a company and dates, or the ATS cannot build your work history.",
-                    "fix": "Give every job its title, company name and start and end dates.",
-                    "we_fix": "We give every job its title, company and dates."},
+    "job_details": {"ids": ["P5", "T4"], "name": "Some jobs miss a title or a company", "show": "quotes",
+                    "why": "Each job needs a title and a company, or the ATS cannot build your work history.",
+                    "fix": "Give every job its title and company name.",
+                    "we_fix": "We give every job its title and company."},
+    # 2026-11-09: the one job card became three separate messages, each with its own evidence, so the text always
+    # matches what the resume really shows: dates missing, dates not Mon YYYY, and no experience section found.
+    "job_dates_missing": {"ids": ["T4B"], "name": "Job dates are missing", "show": "quotes",
+                          "why": "Without dates the ATS cannot tell how long you stayed, and some systems drop the "
+                                 "job or place it in the wrong order.",
+                          "fix": "Add the start and end month and year to every job, for example \"Jan 2021 - "
+                                 "Present\".",
+                          "we_fix": "We write every job's start and end dates as month and year."},
+    "job_dates_format": {"ids": ["T4C"], "name": "Job dates are not written as Mon YYYY", "show": "quotes",
+                         "why": "A year alone, or a length such as \"2 years\", cannot be read as a date by the "
+                                "ATS, so your timeline looks incomplete.",
+                         "fix": "Write each date as month and year, for example \"Mar 2018 - Dec 2020\".",
+                         "we_fix": "We convert every job date to the month and year format."},
+    "no_experience": {"ids": ["T4D"], "name": "No work experience section was found", "show": "quotes",
+                      "why": "When the experience section cannot be read, the ATS sees no work history at all, which "
+                             "is the most damaging thing that can happen to an application.",
+                      "fix": "Keep one clear \"Experience\" heading and list the jobs underneath it, not inside "
+                             "boxes, tables or columns.",
+                      "we_fix": "We give every resume a standard Experience section the ATS can read."},
+    "printed_code": {"ids": ["T18"], "name": "Printed code or HTML is visible in the text", "show": "quotes",
+                     "why": "The ATS reads the code as text, so a date or a whole job line can be lost, and the "
+                            "recruiter sees the code.",
+                     "fix": "Remove the code from the resume text, or export a clean text version.",
+                     "we_fix": "We export every resume so no code is left in the text."},
     "job_locations": {"ids": ["T16"], "name": "Some jobs show no location", "show": "quotes",
                       "why": "A place next to a job helps recruiters who filter by city, but it is not required.",
                       "fix": "Add the city and country next to the company when you want to, for example \"Dubai, UAE\".",
                       "we_fix": "We add the city and country to each job line when you have them."},
+    "program_entry": {"ids": ["T17"], "name": "A course or program is listed under Experience", "show": "quotes",
+                      "why": "Recruiters read everything under Experience as a job, so a course or program can look "
+                             "like work you were paid for.",
+                      "fix": "Move it to Certifications or Professional Development.",
+                      "we_fix": "We list courses and programs under Certifications, not under Experience."},
     "location": {"ids": ["P6", "T6"], "name": "No city in the contact details", "show": "contact",
                  "why": "Many recruiters filter candidates by city or country.",
                  "fix": "Add your city and country, for example \"Dubai, UAE\".",
@@ -426,6 +455,8 @@ CLIENT_TEXT = {
     "issues_sub": "Every issue found in the original resume, most important first.",
     "no_issues": "No issues were found in the original resume.",
     "quote": "In the original resume",
+    "swapped": "The two files were given the other way round: the one with the 1000Jobs layout ({ours}) is the "
+               "1000Jobs resume, so {original} is read here as the original resume.",
 }
 MAX_QUOTE_LINES, MAX_QUOTE_CHARS = 2, 160     # "before" quotes in the client report: short
 MAX_IMPROVE = 4                # "What we'll fix": at most this many lines, each tied to an issue in this resume
@@ -501,6 +532,21 @@ def is_current(r):
     return isinstance(r, dict) and r.get("version") == SCORE_VERSION and "layout" in r
 
 
+AI_BUSY_TEXT = ("The AI service is busy right now, so this job could not be read. Nothing was checked - press "
+                "Run check again in a minute.")
+
+
+def message_of_ai_error(text):
+    """The message the team sees when the Lab stopped on an AI problem. A service that is busy or unreachable becomes
+    one plain sentence (the provider's own answer is written to the server log, never shown); anything else keeps the
+    Lab's own words."""
+    low = (text or "").lower()
+    if "the ai service is busy" in low or "no valid keyword answer" in low:
+        print(f"AI check stopped: {text}", file=sys.stderr)
+        return AI_BUSY_TEXT
+    return f"Keyword extraction failed: {text}"
+
+
 def run_check(pdf_bytes, filename, with_job, text, cache=None, role_cache=None, job_title=None):
     """CV Score for one CV. with_job: text = the job description and job_title = the job's title, typed by the user
     (required: it is never guessed from the posting); else text = an optional target role (empty: the role is
@@ -568,7 +614,7 @@ def run_check(pdf_bytes, filename, with_job, text, cache=None, role_cache=None, 
             except L.NotAJob as e:
                 raise CheckError(f"This does not look like a job description: {e}.")
             except SystemExit as e:                 # v3 stops with a message (API error, missing key, ...)
-                raise CheckError(f"Keyword extraction failed: {e}")
+                raise CheckError(message_of_ai_error(str(e)))
     finally:
         safe_remove(pdf_path)                       # never fails the check (Windows may hold the file a moment)
     r["cv"] = filename
@@ -920,6 +966,26 @@ def issue_cards(r):
         if rank[i["severity"]] < rank[c["severity"]]:
             c["severity"] = i["severity"]
         c["also"] = c.get("also", []) + [i["name"]]
+
+    # C9 and C6/B9 can be two checks on the same achievement: one sees the repeated number and the other sees the
+    # repeated Select Achievements text. Keep both score deductions, but show one card when the quoted evidence
+    # overlaps. A repeated-text card with different evidence remains a separate card.
+    numbers = cards.get("repeated_numbers")
+    repeated = cards.get("repeated")
+    if numbers and repeated and all(i.get("id") in {"C6", "B9"} for i in repeated["issues"]):
+        def evidence_words(text):
+            return set(re.findall(r"[a-z0-9$]+", (text or "").lower()))
+        def result_tokens(text):
+            return set(re.findall(r"(?:[$€£]\s?\d+(?:[.,]\d+)?[kmb]?|\b\d+(?:[.,]\d+)?%?|\b\d+[kmb])",
+                                  (text or "").lower()))
+        number_quotes = [q for i in numbers["issues"] for q in (i.get("evidence") or [])]
+        repeated_quotes = [q for i in repeated["issues"] for q in (i.get("evidence") or [])]
+        overlaps = any(result_tokens(a) & result_tokens(b) and len(evidence_words(a) & evidence_words(b)) >= 6
+                       for a in number_quotes for b in repeated_quotes)
+        if overlaps:
+            numbers["points"] = round(numbers["points"] + repeated["points"], 1)
+            numbers["issues"].extend(repeated["issues"])
+            del cards["repeated"]
     cards = list(cards.values())
     for c in cards:
         t = ISSUES[c["key"]]
@@ -944,9 +1010,83 @@ def compare_versions(old, new):
             "new": [b[k]["name"] for k in b if k not in a]}
 
 
+OURS_MARKERS = (("career impact at a glance", 3), ("prepared with 1000jobs", 2), ("select achievements", 2))
+
+
+def looks_like_1000jobs(r):
+    """How strongly a resume carries the 1000Jobs layout's own marks (0 for a client's own resume): the highlight
+    boxes, the "Prepared with 1000Jobs" watermark, "Select Achievements" and the ** marks are made by our generator,
+    not by a client."""
+    doc, vdoc = r.get("_doc") or {}, r.get("_vdoc") or r.get("_doc") or {}
+    text = " ".join((x or "") for x in (doc.get("modern"), doc.get("strict"), vdoc.get("modern"), vdoc.get("strict")))
+    text = " ".join(text.lower().split())
+    score = sum(weight for marker, weight in OURS_MARKERS if marker in text)
+    score += 1 if "**" in text else 0
+    score += 2 if any(i.get("id") == "B8" for i in r.get("issues") or []) else 0    # the highlight boxes, by layout
+    return score
+
+
+OURS_MARK_WORDS = ("career impact at a glance", "select achievements", "prepared with 1000jobs")
+OURS_MARK_LABELS = {"career impact at a glance": "a \"Career Impact at a Glance\" section",
+                    "select achievements": "a \"Select Achievements\" section",
+                    "prepared with 1000jobs": "the \"Prepared with 1000Jobs\" watermark",
+                    "** marks": "** formatting marks", "name": "its file name (Name_Company)"}
+
+
+def pdf_head_text(data, pages=2):
+    """The readable text of the first pages of an uploaded PDF (bytes): for the light checks made before a check
+    runs. A file we cannot read gives "": the check itself says what is wrong with it."""
+    import io
+
+    import pdfplumber
+    try:
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            return "\n".join((p.extract_text(x_tolerance=3) or "") for p in pdf.pages[:pages])
+    except Exception:
+        return ""
+
+
+def name_looks_like_ours(file_name):
+    """The generator names its files Name_Company.pdf (the user's own are usually Name_CV.pdf): True when the name has
+    two or more underscores and does not say CV or resume."""
+    stem = os.path.splitext(os.path.basename(file_name or ""))[0].lower()
+    return stem.count("_") >= 2 and not re.search(r"\b(cv|resume|curriculum)\b", stem.replace("_", " "))
+
+
+def template_marks(data, file_name=""):
+    """Which 1000Jobs marks a resume shows, read from its text without scoring anything (the layout's own words and
+    ** marks), plus its file name. -> a list of short labels, empty for a user's own resume."""
+    text = pdf_head_text(data)
+    flat = " ".join(text.lower().split())
+    found = [OURS_MARK_LABELS[m] for m in OURS_MARK_WORDS if m in flat]
+    if "**" in text:
+        found.append(OURS_MARK_LABELS["** marks"])
+    if name_looks_like_ours(file_name):
+        found.append(OURS_MARK_LABELS["name"])
+    return found
+
+
+def client_pair(main, previous, swap=None):
+    """(the client's original resume, our 1000Jobs resume, were they uploaded the other way round?).
+
+    `main` is the file in the 1000Jobs slot and `previous` the file in the user's own resume slot. `swap` is what the
+    team said with the Swap button: True = the two files came the other way round, None = they did not say. When they
+    did not say, the roles are decided by the 1000Jobs marks a file carries, never by the upload slot alone: a file
+    with the highlight boxes, the watermark or the ** marks is ours, so the report can never describe our own resume
+    as the client's original (the Sana case). When neither file carries them, or both do (an old 1000Jobs version next
+    to a new one), the slots are kept as they are."""
+    if swap is not None:
+        return (main, previous, True) if swap else (previous, main, False)
+    ours_main, ours_previous = looks_like_1000jobs(main), looks_like_1000jobs(previous)
+    if ours_previous >= 3 and ours_previous > ours_main:      # the 1000Jobs resume came in as the "previous" one
+        return main, previous, True
+    return previous, main, False
+
+
 def client_comparison(old, new):
-    """The client comparison report: `old` is the client's original resume, `new` our 1000Jobs resume. Of `new` only
-    its scores are used (and which issues it no longer has); every problem shown comes from `old`.
+    """The client comparison report for a pair whose roles are already known (see client_pair): `old` is the client's
+    original resume, `new` our 1000Jobs resume. Of `new` only its scores are used (and which issues it no longer has);
+    every problem shown comes from `old`.
     -> {"old", "new", "parts": [(part, old, new)], "improved": [cards of old], "issues": [cards of old]}"""
     old_cards = issue_cards(old)
     still = {c["key"] for c in issue_cards(new) if not c.get("ai")}
@@ -956,9 +1096,36 @@ def client_comparison(old, new):
             "improved": improved, "issues": old_cards}
 
 
-def short_quote(c, r):
-    """A short quote of the card's problem in resume `r`: its first lines, each cut to a readable length."""
-    lines = [l for l in before_after(c, r)[1] if not l.startswith("←")][:MAX_QUOTE_LINES]
+def quote_key(text):
+    """Text ready to be compared with a resume's own text: letters and digits only, in lower case. Line breaks,
+    letter spacing, dashes, bullets and quotation marks do not matter then ("2019 - 2023" = "2019–2023")."""
+    return re.sub(r"[^0-9a-z]+", "", text.lower())
+
+
+def own_text(r):
+    """The resume's own text as one comparison key (its modern and its strict extraction): what a quote of this
+    resume must be found in."""
+    doc, vdoc = r.get("_doc") or {}, r.get("_vdoc") or r.get("_doc") or {}
+    text = " ".join((x or "") for x in (doc.get("modern"), doc.get("strict"), vdoc.get("modern"), vdoc.get("strict")))
+    return quote_key(text)
+
+
+def from_other_only(line, r, other):
+    """True when the line is text of the other resume and not of `r`: such a line is never shown as a quote of `r`.
+    A line we wrote ourselves ("Not found in your resume") has no resume text: it is kept."""
+    segs = _segments(line) if other is not None else []
+    if not segs:
+        return False
+    mine, theirs = own_text(r), own_text(other)
+    return not any(quote_key(s) in mine for s in segs) and any(quote_key(s) in theirs for s in segs)
+
+
+def short_quote(c, r, other=None):
+    """A short quote of the card's problem in resume `r`: its first lines, each cut to a readable length. With
+    `other` (the 1000Jobs resume in the client report), a line that is the other resume's own text is left out, so a
+    "Before" quote always comes from the resume it is presented as."""
+    lines = [l for l in before_after(c, r)[1] if not l.startswith("←")]
+    lines = [l for l in lines if not from_other_only(l, r, other)][:MAX_QUOTE_LINES]
     return [l if len(l) <= MAX_QUOTE_CHARS else l[:MAX_QUOTE_CHARS - 1].rstrip() + "…" for l in lines] \
         or [REPORT_TEXT["nothing_shown"]]
 
@@ -1094,6 +1261,7 @@ CLIENT_CSS = """
   border-radius: 14px; padding: 12px 14px;}
 .rp .cmp > div.ours {border: 2px solid #1d4ed8;}
 .rp .cmp .who {font-size: 1.1rem; font-weight: 800;} .rp .cmp .chg {color: #16a34a; font-weight: 700;}
+.rp .cmp .file {color: #64748b; font-size: 0.78rem; word-break: break-word;}
 .rp .cmp .chg.down {color: #dc2626;}
 .rp table.pt {width: 100%; border-collapse: collapse; font-size: 0.9rem;}
 .rp table.pt th {text-align: left; color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;
@@ -1798,42 +1966,45 @@ def change_text(before, after):
     return CLIENT_TEXT["change"].format(sign="+" if d >= 0 else "−", change=abs(d))
 
 
-def compared_html(cmp):
+def compared_html(cmp, old=None, new=None):
+    """The two scores side by side - the original resume on the left, our 1000Jobs resume on the right - each with the
+    file it belongs to under it, so a file in the wrong place is impossible to miss."""
     d = round(cmp["new"]) - round(cmp["old"])
-    side = lambda cls, key, score, extra="": (
+    side = lambda cls, key, score, name, extra="": (
         f'<div class="{cls}">{gauge(score, 96)}<div><div class="who">{CLIENT_TEXT[key].format(score=fmt(score))}'
-        f'{extra}</div></div></div>')
+        f'{extra}</div><div class="file">{esc(name)}</div></div></div>')
     chg = f' <span class="chg{" down" if d < 0 else ""}">({change_text(cmp["old"], cmp["new"])})</span>'
     rows = "".join(f'<tr><td>{PART_NAMES[p]}</td><td>{fmt(a)}</td><td>{fmt(b)}</td><td>{change_text(a, b)}</td></tr>'
                    for p, a, b in cmp["parts"])
     return (f'<h2>{CLIENT_TEXT["compared"]}</h2><div class="sub">{CLIENT_TEXT["compared_sub"]}</div><div class="card">'
-            f'<div class="cmp">{side("old", "original", cmp["old"])}{side("ours", "ours", cmp["new"], chg)}</div>'
+            f'<div class="cmp">{side("old", "original", cmp["old"], (old or {}).get("cv") or "")}'
+            f'{side("ours", "ours", cmp["new"], (new or {}).get("cv") or "", chg)}</div>'
             f'<table class="pt"><tr><th>{CLIENT_TEXT["part"]}</th><th>{CLIENT_TEXT["col_original"]}</th>'
             f'<th>{CLIENT_TEXT["col_ours"]}</th><th>{CLIENT_TEXT["col_change"]}</th></tr>{rows}</table></div>')
 
 
-def improved_html(cmp, old):
+def improved_html(cmp, old, other=None):
     items = "".join(f'<div class="imv"><i>&#10003;</i><div><div class="t">{esc(c["name"])}</div>'
                     f'<div class="cap">{CLIENT_TEXT["before"]}</div>'
-                    f'<div class="code now">{"<br>".join(esc(l) for l in short_quote(c, old))}</div>'
+                    f'<div class="code now">{"<br>".join(esc(l) for l in short_quote(c, old, other))}</div>'
                     f'<div class="chd"><b>{CLIENT_TEXT["changed"]}:</b> {esc(c["we_fix"])}</div></div></div>'
                     for c in cmp["improved"]) or f'<div class="sub">{CLIENT_TEXT["none_improved"]}</div>'
     return f'<h2>{CLIENT_TEXT["improved"]}</h2><div class="sub">{CLIENT_TEXT["improved_sub"]}</div>{items}'
 
 
-def original_issue_html(n, c, old):
+def original_issue_html(n, c, old, other=None):
     meta = " · ".join(x for x in (c["tag"], PART_NAMES.get(card_part(c), ""),
                                   REPORT_TEXT["ai"] if c.get("ai") else "") if x)
     return (f'<div class="ci"><div class="hd"><span class="num {c["tag"]}">{n}</span><span class="it"><div class="t">'
             f'{esc(c["name"])}</div><div class="m">{esc(meta)}</div></span></div><div class="ib"><div class="ba"><div>'
             f'<div class="cap">{CLIENT_TEXT["quote"]}</div><div class="code now">'
-            f'{"<br>".join(esc(l) for l in short_quote(c, old))}</div></div></div><div class="wf">'
+            f'{"<br>".join(esc(l) for l in short_quote(c, old, other))}</div></div></div><div class="wf">'
             f'<div><b>{REPORT_TEXT["why_hurts"]}</b>{esc(c["why"])}</div>'
             f'<div><b>{REPORT_TEXT["how_fix"]}</b>{esc(c["fix"])}</div></div></div></div>')
 
 
-def original_issues_html(cmp, old):
-    body = "".join(original_issue_html(n, c, old) for n, c in enumerate(cmp["issues"], 1)) or \
+def original_issues_html(cmp, old, other=None):
+    body = "".join(original_issue_html(n, c, old, other) for n, c in enumerate(cmp["issues"], 1)) or \
         f'<div class="sub">{CLIENT_TEXT["no_issues"]}</div>'
     return f'<h2>{CLIENT_TEXT["issues"]}</h2><div class="sub">{CLIENT_TEXT["issues_sub"]}</div>{body}'
 
@@ -1846,7 +2017,8 @@ def why_1000jobs_html():
 def comparison_body(old, new):
     """The 3 sections and "Why 1000Jobs" (the page shows this; the PDF adds the header)."""
     cmp = client_comparison(old, new)
-    return compared_html(cmp) + improved_html(cmp, old) + original_issues_html(cmp, old) + why_1000jobs_html()
+    return compared_html(cmp, old, new) + improved_html(cmp, old, new) + original_issues_html(cmp, old, new) \
+        + why_1000jobs_html()
 
 
 def comparison_document(old, new):
@@ -1856,6 +2028,14 @@ def comparison_document(old, new):
             f'content="width=device-width, initial-scale=1"><title>{title}</title><link rel="stylesheet" '
             f'href="{FONT_URL}"><style>{REPORT_CSS}{CLIENT_CSS}{PRINT_CSS}</style></head><body><div class="rp">'
             f'{client_header_html(old, new)}{comparison_body(old, new)}</div></body></html>')
+
+
+def client_document(main, previous, swap=None):
+    """The client comparison report for the two files as they were uploaded: `main` is the file in the 1000Jobs slot
+    and `previous` the file in the user's own resume slot (see client_pair for `swap`). The roles are decided here,
+    once, and everything below works with them, so a Swap the team pressed is never undone further down."""
+    old, new = client_pair(main, previous, swap)[:2]
+    return comparison_document(old, new)
 
 
 # ---------------------------------------------------------------------------
@@ -2027,6 +2207,14 @@ def show_details(r):
             st.markdown(f"- {x['kind'].capitalize()}: {html.escape(x['detail'])}")
         for x in unusual:
             st.markdown(f"- AI reviewer: {html.escape(x['issue'])}: \"{html.escape(x['quote'])}\"")
+        verify = r.get("to_verify") or []
+        st.markdown(f"**To verify by the team** ({len(verify)}) - a rule the rendered page or the golden set does "
+                    f"not support: not scored, and not shown to the user")
+        if not verify:
+            st.caption("Nothing to verify.")
+        for v in verify:
+            st.markdown(f"- {html.escape(v.get('name') or v.get('id'))}: {html.escape(v.get('why') or '')}"
+                        + (f"  \n  the rule found: {html.escape(v['detail'])}" if v.get("detail") else ""))
         if r.get("ai_review") is None:
             st.caption("The AI reviewer did not run (no API key).")
         else:
@@ -2034,9 +2222,9 @@ def show_details(r):
                        + (f"; {ai['rejected']} left out because their quote is not in the resume" if ai["rejected"] else ""))
 
 
-def render(r, with_job=None, previous=None, client=False):
+def render(r, with_job=None, previous=None, client=False, swapped=None):
     if client and previous is not None:              # the client comparison report: its 3 sections only
-        return render_client(previous, r)
+        return render_client(previous, r, swapped)
     if client:
         st.info(CLIENT_TEXT["need_original"])
     cards = issue_cards(r)
@@ -2053,8 +2241,12 @@ def render(r, with_job=None, previous=None, client=False):
     show_download(slot, r, cards)
 
 
-def render_client(old, new):
-    """The client comparison report on the page: the same 3 sections and "Why 1000Jobs" as its PDF."""
+def render_client(old, new, swapped=None):
+    """The client comparison report on the page: the same 3 sections and "Why 1000Jobs" as its PDF. The roles are
+    decided here, once (see client_pair), and said plainly, so a file in the wrong slot is easy to spot."""
+    old, new, other_way = client_pair(new, old, swapped)
+    if other_way:                                   # said plainly: the two files were read the other way round
+        st.caption(CLIENT_TEXT["swapped"].format(ours=new["cv"], original=old["cv"]))
     slot = st.empty()
     slot.caption(REPORT_TEXT["pdf_preparing"])
     st.markdown(f"<style>{CLIENT_CSS}</style>", unsafe_allow_html=True)
@@ -2215,7 +2407,8 @@ def main(after_check=None, page_config=True, below_top=None, gate=None):
             if after_check:
                 after_check(st.session_state["result"])
             st.rerun()
-    render(saved["res"], saved["with_job"], saved["prev"], client=bool((saved.get("inputs") or {}).get("client")))
+    render(saved["res"], saved["with_job"], saved["prev"], client=bool((saved.get("inputs") or {}).get("client")),
+           swapped=saved.get("swap"))
 
 
 def check_and_store(inputs, gate=None):
@@ -2230,7 +2423,7 @@ def check_and_store(inputs, gate=None):
                 prev = run_check(inputs["prev_pdf"], inputs["prev_name"], inputs["with_job"], inputs["text"],
                                  job_title=inputs.get("job_title"))
             st.session_state["result"] = {"res": res, "with_job": inputs["with_job"], "prev": prev,
-                                          "inputs": inputs}
+                                          "swap": inputs.get("swap"), "inputs": inputs}
     except CheckError as e:
         st.session_state.pop("result", None)
         st.error(str(e))

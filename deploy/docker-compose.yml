@@ -1,0 +1,66 @@
+# 1000Jobs ATS Lab - going live on a server (Docker).
+#
+#   cd deploy
+#   cp .env.example .env      then edit .env (the AI key, the admin accounts, the domain)
+#   docker compose up -d --build
+#
+# Two containers:
+#   app    the Streamlit app (built from the project folder, ../Dockerfile), listening on 8501 INSIDE the network
+#   caddy  the web server in front: it takes the domain from .env, gets a free HTTPS certificate by itself and
+#          forwards to the app. WebSockets are forwarded too (Streamlit needs them).
+# Only caddy is reachable from the internet (ports 80 and 443). Port 8501 is never published.
+#
+# The history database and the kept resume files live in the "atslab-data" volume: they survive a rebuild, a
+# restart and a server reboot. The app's own folder (including this file) is read again on every rebuild.
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: atslab:local
+    container_name: atslab-app
+    restart: unless-stopped                       # starts again by itself after a reboot or a crash
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set it in .env}
+      ATSLAB_ADMINS: ${ATSLAB_ADMINS:?set it in .env}
+      ATSLAB_DATA_DIR: /data
+      # optional: the links and the limits (an admin can also change them on the Admin page, Settings)
+      ATSLAB_PREMIUM_URL: ${ATSLAB_PREMIUM_URL:-}
+      ATSLAB_BOOKING_URL: ${ATSLAB_BOOKING_URL:-}
+      ATSLAB_SITE_URL: ${ATSLAB_SITE_URL:-}
+      ATSLAB_DAILY_CHECKS: ${ATSLAB_DAILY_CHECKS:-3}
+      ATSLAB_FILE_DAYS: ${ATSLAB_FILE_DAYS:-30}
+      TZ: Asia/Dubai
+    volumes:
+      - atslab-data:/data
+    expose:
+      - "8501"                                    # inside the private network only
+    networks:
+      - atslab
+
+  caddy:
+    image: caddy:2
+    container_name: atslab-web
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set it in .env}
+      EMAIL: ${EMAIL:-}                           # for the certificate notices (Let's Encrypt)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data                          # the certificates
+      - caddy-config:/config
+    networks:
+      - atslab
+
+networks:
+  atslab:
+
+volumes:
+  atslab-data:                                    # the history + the kept resume files (back this up)
+  caddy-data:
+  caddy-config:

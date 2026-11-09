@@ -1,0 +1,12 @@
+# Caddy: the domain in .env gets a free HTTPS certificate by itself (Let's Encrypt) and is forwarded to the app.
+# Nothing else is needed: WebSockets (Streamlit needs them), the uploads and the "X-Forwarded-For" header that the
+# app uses to count the free checks per person are all handled by Caddy.
+#
+# Keep the DNS record of this subdomain on "DNS only" (grey cloud) if the domain is on Cloudflare: with Cloudflare's
+# proxy (orange cloud) every visitor looks like the same address to the app, and the "3 free checks a day" limit
+# would count everybody as one person.
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8501
+}

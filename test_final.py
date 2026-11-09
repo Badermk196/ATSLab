@@ -74,9 +74,12 @@ class TestJobLocationIsOnlyANote(unittest.TestCase):
         for r in (self.with_place, self.without):
             t4 = r["structure_checks"]["T4"]
             self.assertEqual(t4["score"], 1.0, t4["detail"])
-            self.assertEqual(t4["detail"], "3 of 3 jobs have title, company and Mon YYYY dates")
+            # 2026-11-09: this check now covers the title and the company; the dates have their own three checks
+            self.assertEqual(t4["detail"], "3 of 3 jobs have a title and a company")
         names = [c["name"] for c in D.issue_cards(self.without)]
-        self.assertNotIn("Some jobs miss a title, company or Mon YYYY dates", names)
+        self.assertNotIn("Some jobs miss a title or a company", names)
+        for fid in ("T4B", "T4C", "T4D"):
+            self.assertEqual(r["structure_checks"][fid]["score"], 1.0, fid)     # the dates are fine here
 
     def test_a_missing_location_costs_at_most_one_point_and_is_minor(self):
         t16 = self.without["structure_checks"]["T16"]
@@ -91,7 +94,9 @@ class TestJobLocationIsOnlyANote(unittest.TestCase):
         self.assertIn("not required", card["why"])
 
     def test_title_company_and_dates_keep_their_weight(self):
-        self.assertGreater(C.STRUCT_WEIGHT["T4"], 0.2)
+        # 2026-11-09: the old T4 weight (0.22) is kept whole: the job family plus the printed-code check
+        family = sum(C.STRUCT_WEIGHT[k] for k in ("T4", "T4B", "T4C", "T4D"))
+        self.assertAlmostEqual(family + C.STRUCT_WEIGHT["T18"], 0.22)
         self.assertIn("T16", C.NOTE_ONLY)                                 # a note: never the extra penalty points
         self.assertAlmostEqual(sum(C.STRUCT_WEIGHT.values()), 1.0)
 

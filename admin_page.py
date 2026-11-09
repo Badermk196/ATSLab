@@ -209,7 +209,8 @@ def saver(who):
     def save(saved):
         inputs = saved.get("inputs") or {}
         try:
-            rec = H.record_of(saved["res"], who, inputs.get("job_title"), saved.get("prev"), bool(inputs.get("client")))
+            rec = H.record_of(saved["res"], who, inputs.get("job_title"), saved.get("prev"),
+                              bool(inputs.get("client")), saved.get("swap"))
             store().add_check(rec, inputs.get("pdf"))
             r = saved["res"]
             store().log(who, "check", rec["candidate"] or rec["file_name"],
@@ -254,24 +255,94 @@ def job_fields(round_, prefix=""):
     return title, text
 
 
+def client_slots(round_):
+    """The client comparison report's two files, each in its own clearly named slot, with the Swap button between them.
+    -> (the file read as the user's own resume, the file read as the 1000Jobs resume, is it read the other way round?).
+    The slots say the order; the Swap button makes the two files read the other way round, and the line under them says
+    which file is read as which, so a file in the wrong slot is easy to spot before the report is made."""
+    st.caption(ADMIN_TEXT["pair_hint"])
+    swapped = bool(st.session_state.get(f"swap_{round_}"))
+    left, mid, right = st.columns([1, 0.46, 1], vertical_alignment="center")
+    with left:
+        original = st.file_uploader(ADMIN_TEXT["slot_original"], type=D.UPLOAD_TYPES, key=f"c_original_{round_}")
+        st.caption(ADMIN_TEXT["slot_original_hint"])
+    with mid:
+        if st.button(ADMIN_TEXT["swap"], key=f"swap_btn_{round_}", width="stretch", icon=":material/swap_horiz:",
+                     help=ADMIN_TEXT["swap_help"]):
+            st.session_state[f"swap_{round_}"] = not swapped
+            st.rerun()
+    with right:
+        ours = st.file_uploader(ADMIN_TEXT["slot_ours"], type=D.UPLOAD_TYPES, key=f"c_ours_{round_}")
+        st.caption(ADMIN_TEXT["slot_ours_hint"])
+    user_file, ours_file = (ours, original) if swapped else (original, ours)
+    if user_file is not None and ours_file is not None:
+        st.markdown(f'<div class="a-note">{UI.esc((ADMIN_TEXT["swap_note"] if swapped else ADMIN_TEXT["roles_read"])
+                                                  .format(original=user_file.name, ours=ours_file.name))}</div>',
+                    unsafe_allow_html=True)
+    else:
+        st.caption(ADMIN_TEXT["pair_wait"])
+    return user_file, ours_file, swapped
+
+
+def client_inputs(round_, user_file, ours_file, swapped, mode, title, text):
+    """The inputs of the client comparison report, after looking at the two files the way they will be read. A file
+    that carries the 1000Jobs layout in the slot of the user's own resume is never passed silently: the two files are
+    shown and the team decides (swap them, or go on and build the report)."""
+    if user_file is None or ours_file is None:
+        st.error(ADMIN_TEXT["need_both"])
+        return None
+    marks = D.template_marks(user_file.getvalue(), user_file.name)
+    if marks:
+        st.warning(ADMIN_TEXT["roles_warn"].format(file=user_file.name, marks=", ".join(marks),
+                                                  swap=ADMIN_TEXT["swap"], confirm=ADMIN_TEXT["roles_confirm"]))
+        a, b = st.columns(2)
+        if a.button(ADMIN_TEXT["swap"], key=f"swap_warn_{round_}", width="stretch", icon=":material/swap_horiz:"):
+            st.session_state[f"swap_{round_}"] = not swapped
+            st.rerun()
+        if b.button(ADMIN_TEXT["roles_confirm"], key=f"roles_go_{round_}", type="primary", width="stretch"):
+            pass                                   # go on: the report is built with these two files
+        else:
+            return None
+    return {"pdf": ours_file.getvalue(), "name": ours_file.name, "with_job": mode == D.WITH_JOB, "text": text,
+            "job_title": title, "prev_pdf": user_file.getvalue(), "prev_name": user_file.name,
+            "client": True, "swap": True if swapped else None}
+
+
 def check_form(mode):
-    """The upload card: resume, target role + job description (with a job), compare with a previous resume."""
+    """The upload card: resume, target role + job description (with a job), and - for the client comparison report -
+    the user's own resume and the 1000Jobs resume in their own slots, with a Swap button and a check before the report."""
     round_ = st.session_state.get("upload_round", 0)
-    upload = st.file_uploader(ADMIN_TEXT["resume"], type=D.UPLOAD_TYPES, key=f"upload_{round_}")
+    client = bool(st.session_state.get(f"client_{round_}", False))    # set by the checkbox below, on the run before
+    upload = None if client else st.file_uploader(ADMIN_TEXT["resume"], type=D.UPLOAD_TYPES, key=f"upload_{round_}")
     title, text = job_fields(round_) if mode == D.WITH_JOB else ("", "")
     if mode != D.WITH_JOB:
         st.caption(ADMIN_TEXT["general_note"])
-    with st.expander(ADMIN_TEXT["compare"], icon=":material/compare_arrows:"):
-        st.caption(ADMIN_TEXT["compare_sub"])
-        prev = st.file_uploader(ADMIN_TEXT["previous"], type=D.UPLOAD_TYPES, key=f"previous_{round_}")
+    user_file = ours_file = prev = None
+    swapped = None
+    with st.expander(ADMIN_TEXT["compare_client"] if client else ADMIN_TEXT["compare"], icon=":material/compare_arrows:",
+                     expanded=client):            # stays open in the client mode: a rerun never hides the two slots
+        st.caption(ADMIN_TEXT["compare_client_sub"] if client else ADMIN_TEXT["compare_sub"])
         client = st.checkbox(D.CLIENT_TEXT["checkbox"], key=f"client_{round_}")
+        if client:
+            user_file, ours_file, swapped = client_slots(round_)
+        else:
+            prev = st.file_uploader(ADMIN_TEXT["previous"], type=D.UPLOAD_TYPES, key=f"previous_{round_}")
     if st.button(ADMIN_TEXT["run"], type="primary", width="stretch", key="run_check", icon=":material/arrow_forward:",
                  icon_position="right"):
-        return {"pdf": upload.getvalue() if upload else b"", "name": upload.name if upload else "",
-                "with_job": mode == D.WITH_JOB, "text": text, "job_title": title,
-                "prev_pdf": prev.getvalue() if prev is not None else None,
-                "prev_name": prev.name if prev is not None else None, "client": client}
-    return None
+        st.session_state[f"wanted_{round_}"] = True       # the check is wanted: the two files are looked at first
+    if not st.session_state.get(f"wanted_{round_}"):
+        return None
+    if client:
+        out = client_inputs(round_, user_file, ours_file, swapped, mode, title, text)
+        if out is None:                                   # a file to look at again: nothing checked yet
+            return None
+        st.session_state.pop(f"wanted_{round_}", None)
+        return out
+    st.session_state.pop(f"wanted_{round_}", None)
+    return {"pdf": upload.getvalue() if upload else b"", "name": upload.name if upload else "",
+            "with_job": mode == D.WITH_JOB, "text": text, "job_title": title,
+            "prev_pdf": prev.getvalue() if prev is not None else None,
+            "prev_name": prev.name if prev is not None else None, "client": client}
 
 
 def run(inputs, who):
@@ -333,7 +404,8 @@ def check_view(who):
     b.button(ADMIN_TEXT["new_check"], type="primary", on_click=D.start_new, key="new_check", width="stretch")
     if (mode == D.WITH_JOB) != bool(saved["with_job"]):
         again_card(mode, saved, who)
-    D.render(saved["res"], saved["with_job"], saved["prev"], client=bool((saved.get("inputs") or {}).get("client")))
+    D.render(saved["res"], saved["with_job"], saved["prev"],
+             client=bool((saved.get("inputs") or {}).get("client")), swapped=saved.get("swap"))
 
 
 # ---------------------------------------------------------------------------

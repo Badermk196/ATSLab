@@ -209,8 +209,22 @@ HEADING_VOCAB = re.compile(
     re.I)
 
 
+def normalize_heading(line):
+    """The heading as an ATS should read it: letters pulled back together and any numbering removed.
+
+    'E X P E R I E N C E' -> 'EXPERIENCE' (letter-spaced headings: the readability card still fires, but the section
+    must still be found - confirmed on the golden set, 2026-11-09), and '03 PROFESSIONAL EXPERIENCE' ->
+    'PROFESSIONAL EXPERIENCE' (numbered headings).
+    """
+    t = re.sub(r"\s+", " ", (line or "").strip()).rstrip(":").strip()
+    t = re.sub(r"^[\(\[]?\d{1,2}[\)\].]?\s+", "", t)
+    if re.fullmatch(r"(?:[A-Za-z]\s+){2,}[A-Za-z]", t):
+        t = t.replace(" ", "")
+    return t
+
+
 def is_heading(line):
-    line = line.strip()
+    line = normalize_heading(line)
     if HEADING_VOCAB.fullmatch(line.rstrip(":")):
         return True
     parts = [p for p in re.split(r"\s*\|\s*", line) if p.strip()]
@@ -221,7 +235,7 @@ def is_heading(line):
 
 
 def section_kind(title):
-    low = title.lower()
+    low = normalize_heading(title).lower()
     return next((k for k, pat in SECTION_KINDS if re.search(pat, low)), "other")
 
 
@@ -240,7 +254,7 @@ def headline_rows(texts):
         if not t or CONTACT_LINE_RE.search(t) or len(t.split()) > 20:
             break
         title = bool(TITLE_WORDS.search(t))
-        low = t.lower().rstrip(":")
+        low = normalize_heading(t).lower()
         if HEADING_VOCAB.fullmatch(low) or (not title and (section_kind(t) != "other" or len(t.split()) < 2 or
                                                            any(w in low for w in STANDARD_HEADING_WORDS))):
             break
@@ -268,7 +282,7 @@ _PART_RE = re.compile(rf"(?:(?:{_MODS})\s+){{0,3}}(?:{_NOUNS})(?:\s+(?:{_NOUNS})
 def is_standard_section(title):
     """True when an ATS can map this section name ('Tools & Platforms', 'Technical Skills', 'Core Competencies',
     'Languages & Availability'). Only names an ATS cannot map ('What I Bring', 'My Journey') are False."""
-    t = re.sub(r"\s+", " ", title.strip(" :")).lower()
+    t = re.sub(r"\s+", " ", normalize_heading(title)).lower()
     if not t:
         return False
     parts = [p.strip() for p in re.split(r"\s*(?:&|\band\b|/|,|\+|\|)\s*", t) if p.strip()]
@@ -644,6 +658,11 @@ def detect_b1(doc, ana):
         return False, "no letter-spaced lines"
     first = lines_of(doc["strict"])[0]
     if sp == [first]:
+        # the name only: a wide font reads as single letters in the strict reading while the normal reading is clean
+        # ("SANA MALIK"). Flag it only when the normal reading really has the letters apart too, never for font width.
+        modern = lines_of(doc["modern"])
+        if not modern or spaced_lines(doc["modern"]) != [modern[0]]:
+            return False, "no letter-spaced lines"
         return True, f"name only: '{first[:40]}'"
     return True, f"{len(sp)} letter-spaced line(s), e.g. '{(sp[1] if sp[0] == first and len(sp) > 1 else sp[0])[:40]}'"
 
@@ -875,7 +894,11 @@ def readable_checks(doc, ana, bugs, prof):
     c["R4"] = chk("Headline", "R", bool(headline), headline or "no headline under the name")
 
     total = 1 + len(ana["sections"])
-    spaced = len(spaced_lines(doc["strict"] if prof["strict_parser"] else doc["modern"]))
+    # The first extracted line is the candidate's name, not a section heading. Some PDF fonts make that line look
+    # letter-spaced to the strict parser (for example "S A N A M A L I K") even though all real headings are normal.
+    # Never let the name lower the section-heading readability check; B1/N1 handle a real spaced name separately.
+    heading_lines = lines_of(doc["strict"] if prof["strict_parser"] else doc["modern"])[1:]
+    spaced = len(spaced_lines("\n".join(heading_lines)))
     spaced = min(spaced, total)
     note = " (name only)" if bugs["B1"]["detail"].startswith("name only") and spaced else ""
     c["R5"] = chk("Section headings readable", "R", (total - spaced) / total,
@@ -1543,27 +1566,84 @@ and return at least 15 hard skills, still following every rule above.
 """
 AI_RUNS = 3               # the AI reads each job 3 times (temperature 0) ...
 AI_MIN_VOTES = 2          # ... and a skill is kept only if it is in at least 2 of the answers
+AI_RETRIES = 2            # a provider that is busy (429/5xx) or does not answer is asked again this many times
+AI_RETRY_WAIT = 2         # seconds before the next try (2s, then 4s)
+AI_FALLBACK_MODEL = (os.environ.get("ATSLAB_AI_FALLBACK_MODEL")
+                     or "google/gemini-2.5-flash-lite")   # a second model when the first one stays busy
+TEMPORARY_STATUS = (429, 500, 502, 503, 504)             # ask again: the provider is busy, not the request wrong
 
 
-def call_ai(prompt, model):
-    """One AI answer as a dict, or None when the answer is not valid JSON."""
+def ai_why(r):
+    """A short reason from a failed OpenRouter answer (for the log), never the whole provider answer."""
+    try:
+        body = r.json()
+    except ValueError:
+        return " ".join(str(r.text)[:120].split())
+    err = body.get("error") if isinstance(body, dict) else None
+    if isinstance(err, dict):
+        msg = str(err.get("message") or "").split("\n")[0]
+        return " ".join(f"{err.get('code') or ''} {msg}".split())[:120]
+    return " ".join(str(body)[:120].split())
+
+
+def ai_post(model, prompt, timeout=180):
+    """One OpenRouter call: -> (the answer body or None, the status or None, a short reason, ask again?).
+    "Ask again" is False only when another try cannot help: a wrong key (401), a model that does not exist (404)."""
     import requests
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
         sys.exit("ERROR: OPENROUTER_API_KEY is not set. Run:  $env:OPENROUTER_API_KEY=\"your-key\"")
-    r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                      headers={"Authorization": f"Bearer {key}"},
-                      json={"model": model, "temperature": 0,
-                            "messages": [{"role": "user", "content": prompt}]},
-                      timeout=180)
-    if r.status_code != 200:
-        sys.exit(f"ERROR from OpenRouter ({r.status_code}): {r.text[:300]}")
-    text = re.sub(r"```json|```", "", r.json()["choices"][0]["message"]["content"])
     try:
-        out = json.loads(text[text.find("{"): text.rfind("}") + 1])
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                          headers={"Authorization": f"Bearer {key}"},
+                          json={"model": model, "temperature": 0,
+                                "messages": [{"role": "user", "content": prompt}]},
+                          timeout=timeout)
+    except requests.RequestException as e:            # no line, a timeout, a DNS hiccup
+        return None, None, type(e).__name__, True
+    if r.status_code != 200:
+        return None, r.status_code, ai_why(r), r.status_code in TEMPORARY_STATUS
+    try:
+        body = r.json()
     except ValueError:
-        return None
-    return out if isinstance(out, dict) else None
+        return None, r.status_code, "the answer was not JSON", True
+    if isinstance(body, dict) and body.get("error"):  # a provider may send an error inside a 200 answer
+        return None, r.status_code, "provider error", True
+    return body, r.status_code, "", False
+
+
+def call_ai(prompt, model):
+    """One AI answer as a dict, or None when the answer is not valid JSON.
+
+    A provider that is busy (429, 5xx), that does not answer at all, or that sends an error inside its answer is asked
+    again `AI_RETRIES` times; then the same prompt goes to `AI_FALLBACK_MODEL`. A wrong key or a model that does not
+    exist is not retried (another try cannot help). When nothing answers, the Lab stops with one plain sentence for
+    the user; the technical detail (status and the provider's short reason) is printed for the team, never shown."""
+    import time
+    status, why = None, ""
+    models = [model] + ([AI_FALLBACK_MODEL] if AI_FALLBACK_MODEL and AI_FALLBACK_MODEL != model else [])
+    for model_try in models:
+        again = True
+        for attempt in range(AI_RETRIES + 1):
+            body, status, why, again = ai_post(model_try, prompt)
+            if body:
+                if model_try != model:
+                    print(f"note: {model} did not answer, {model_try} answered instead", file=sys.stderr)
+                text = re.sub(r"```json|```", "", body["choices"][0]["message"]["content"])
+                try:
+                    out = json.loads(text[text.find("{"): text.rfind("}") + 1])
+                except ValueError:
+                    return None
+                return out if isinstance(out, dict) else None
+            if not again:
+                break                                  # a wrong key / a model that does not exist: do not try again
+            if attempt < AI_RETRIES:
+                time.sleep(AI_RETRY_WAIT * (attempt + 1))
+        if not again:
+            break                                      # and the fallback model will not help either
+    print(f"AI call failed: model {model}, status {status}, reason {why}", file=sys.stderr)
+    sys.exit("ERROR: the AI service is busy or unreachable "
+             f"({status or 'no answer'}). Nothing was scored - try again in a minute.")
 
 
 def extract_keywords_ai(job_text, model, runs=AI_RUNS):

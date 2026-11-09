@@ -287,10 +287,14 @@ class TestStandard(Base):
         self.assertIn("approximately", c["detail"])
 
     def test_abbreviation_written_in_full_once(self):
-        short = changed("Built a Microsoft Excel shipment tracking dashboard used daily by 12 planners.",
-                        "Built a SLA shipment tracking dashboard used daily by 12 planners.")
-        r, c, _ = self.check(short, "C12")
+        one = changed("Built a Microsoft Excel shipment tracking dashboard used daily by 12 planners.",
+                      "Built a SLA shipment tracking dashboard used daily by 12 planners.")
+        self.assertEqual(self.score(one)["content_checks"]["C12"]["score"], 1)   # one alone is no card (4 Nov 2026)
+        two = changed("Built a Microsoft Excel shipment tracking dashboard used daily by 12 planners.",
+                      "Built a SLA and MTTR shipment tracking dashboard used daily by 12 planners.")
+        r, c, _ = self.check(two, "C12")                                        # two are a pattern worth a card
         self.assertIn("SLA", c["detail"])
+        self.assertIn("MTTR", c["detail"])
         full = changed("Built a Microsoft Excel shipment tracking dashboard used daily by 12 planners.",
                        "Built a Service Level Agreement (SLA) dashboard used daily by 12 planners.")
         self.assertEqual(self.score(full)["content_checks"]["C12"]["score"], 1)
@@ -304,14 +308,16 @@ class TestStandard(Base):
                 self.assertEqual(self.score(doc)["content_checks"]["C12"]["score"], 1)
 
     def test_old_roles_kept_short(self):
+        # 5 Nov 2026: a role that ended 10+ years ago is flagged only with 4 or more bullets (3 was too strict)
         doc = changed("EDUCATION", "Logistics Clerk | Jan 2010 - Dec 2013\nPort Cargo LLC | Dubai, UAE\n"
                                    "- Tracked 200 inbound containers a month with the port system.\n"
                                    "- Filed 150 customs documents a month without errors.\n"
-                                   "- Checked 80 delivery notes a week against purchase orders.\nEDUCATION")
+                                   "- Checked 80 delivery notes a week against purchase orders.\n"
+                                   "- Trained two new clerks on the port and customs systems.\nEDUCATION")
         r, c, card = self.check(doc, "C13")
         self.assertIn("Logistics Clerk", card["evidence"][0])
-        two = fake_doc(doc["modern"].replace("- Checked 80 delivery notes a week against purchase orders.\n", ""))
-        self.assertEqual(self.score(two)["content_checks"]["C13"]["score"], 1)
+        three = fake_doc(doc["modern"].replace("- Trained two new clerks on the port and customs systems.\n", ""))
+        self.assertEqual(self.score(three)["content_checks"]["C13"]["score"], 1)
 
     def test_past_jobs_in_past_tense(self):
         doc = changed("Negotiated carrier rates that saved AED 250,000 in the first year.",
@@ -362,9 +368,19 @@ class TestStandard(Base):
         self.assertEqual(r["structure_checks"]["T4"]["score"], 1.0)
         self.assertLess(r["structure_checks"]["T16"]["score"], 1.0)
         self.assertIn("location missing", r["structure_checks"]["T16"]["evidence"][0])
-        r2, c2, card2 = self.check(changed("Mar 2018 - Dec 2020", "2018 - 2020"), "T4", "structure_checks")
-        self.assertEqual(card2["evidence"][0], "2018 - 2020  (year only)")      # the date line, not the title line
-        self.assertTrue(c2["dates_only"])
+        # Since 2026-11-09 this check is right too seldom on the golden set (44%): it no longer changes the score
+        # and no longer appears on the user page. The rule still finds the problem (against the date line, not the
+        # title line) and the team checks it on the admin page.
+        # 2026-11-09: the one job card was split. Year-only dates are now their own check (T4C), and after the truth
+        # re-check (4 of 4 confirmed files right) it is scored again. The title-and-company check (T4) passes: this
+        # job has both.
+        r2 = self.score(changed("Mar 2018 - Dec 2020", "2018 - 2020"))
+        self.assertEqual(r2["structure_checks"]["T4"]["score"], 1.0)
+        c2 = r2["structure_checks"]["T4C"]
+        self.assertLess(c2["score"], 1.0)                       # the year-only date costs points again
+        self.assertFalse(c2.get("moved_to_verify"))
+        self.assertTrue([i for i in r2["issues"] if i["id"] == "T4C"])
+        self.assertEqual(c2["evidence"][0], "2018 - 2020  (year only)")
         for line in ("Infosys, Morgan Stanley Engagement \u2013 Montreal, QC", "Berlitz | Libreville, Gabon",
                      "Markaba \u2013 GCC (Riyadh & Dubai)", "Bohemian General Trading \u2013 UAE Aug 2023 \u2013 Jan 2025"):
             self.assertTrue(C.has_location(line), line)
@@ -374,7 +390,13 @@ class TestStandard(Base):
         _, _, card = self.check(changed("jane.doe@mail.com | ", ""), "T7", "structure_checks")
         self.assertEqual(card["severity"], "Major")                   # rule 4: a missing email is Important
         self.check(changed(" | linkedin.com/in/janedoe", ""), "T5", "structure_checks")
-        self.check(changed(" | Dubai, UAE | ", " | "), "T6", "structure_checks")
+        # 2026-11-09: after the truth re-check (the city is read from the contact details only) the check is right on
+        # all 17 confirmed files, so it is scored again
+        r6 = self.score(changed(" | Dubai, UAE | ", " | "))
+        t6 = r6["structure_checks"]["T6"]
+        self.assertLess(t6["score"], 1.0)
+        self.assertNotIn("T6", [v["id"] for v in r6["to_verify"]])
+        self.assertFalse(t6.get("moved_to_verify"))
 
     def test_failed_standards_cost_points(self):
         ok = self.score(polished_cv())

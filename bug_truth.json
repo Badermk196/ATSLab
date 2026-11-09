@@ -1,0 +1,27 @@
+{
+  "_about": "B12 (backticks) checked 2026-10-15: none of these CVs has one. B13 (text shared between users) is batch-only and not labelled here. Correct bug answers per CV, checked by hand by reading each CV's extracted text. Used by test_ATSLab_v3.py: every detector must match this table exactly (no false alarms, no misses). B6 and B7 appear in none of these CVs, so the tests also check them with made-up text. profile-user has no job description: it is used only as a clean 'no bugs' example.",
+  "cvs": {
+    "AllanAbbas_Revolut":                      {"B1": false, "B2": false, "B3": false, "B4": false, "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": true,  "B11": true, "B12": false,
+                                                "notes": "checked 2026-11-05: B1 no - only the name is spaced in the strict reading, no heading is spaced. B1 name only; B2 no: category table with real skills; B11: one job '2016-2017 & 2023-2024' year only"},
+    "JanaSayed_BakerHughes":                   {"B1": true, "B2": true,  "B3": true,  "B4": true,  "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": false, "B11": true, "B12": false,
+                                                "notes": "B11: first job has no date, 'Jun 2026' has no end date"},
+    "JibranKonkar_AmzoneInternationalLimited": {"B1": true, "B2": true,  "B3": true,  "B4": false, "B5": true,  "B6": false, "B7": false, "B8": true, "B9": true, "B10": false, "B11": false, "B12": false,
+                                                "notes": "B5: **Omniflow**, **Instashop** in the Career Impact boxes"},
+    "MathewOsama_Jobgether":                   {"B1": false, "B2": false, "B3": false, "B4": true,  "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": false, "B11": true, "B12": false,
+                                                "notes": "checked 2026-11-05: B1 no - only the name is spaced in the strict reading, no heading is spaced. B1 name only; B2 no: 'Category: a, b, c' lines; B11: '2021 - Present', '2025 - 06/2026' year only"},
+    "MohamedIrfan_Deloitte":                   {"B1": true, "B2": true,  "B3": true,  "B4": true,  "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": true,  "B11": false, "B12": false,
+                                                "notes": "dates use full month names (May 2024 - July 2025), which count as Mon YYYY"},
+    "NedaSefati_Creatio":                      {"B1": true, "B2": true,  "B3": true,  "B4": false, "B5": true,  "B6": false, "B7": false, "B8": true, "B9": true, "B10": true,  "B11": false, "B12": false,
+                                                "notes": "B5: '**2 teams**' in the Career Impact boxes"},
+    "Tammam_Versuni":                          {"B1": false, "B2": false, "B3": false, "B4": false, "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": true,  "B11": false, "B12": false,
+                                                "notes": "checked 2026-11-05: B1 no - only the name is spaced in the strict reading, no heading is spaced. B1 name only; B2 no: 4x3 skills grid holds 12 real skills (must NOT be called empty)"},
+    "eliasgk_tactical":                        {"B1": true, "B2": true,  "B3": true,  "B4": true,  "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": true,  "B11": false, "B12": false,
+                                                "notes": "dates use full month names, which count as Mon YYYY"},
+    "rashaadnmohammed_Cohere":                 {"B1": true, "B2": true,  "B3": true,  "B4": false, "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": false, "B11": true, "B12": false,
+                                                "notes": "B11: all 3 jobs show durations ('2 years', '3 months', '1 year') instead of dates"},
+    "suzygamal_SuperBridgeSummitDubai":        {"B1": true, "B2": true,  "B3": true,  "B4": false, "B5": false, "B6": false, "B7": false, "B8": true, "B9": true, "B10": false, "B11": true, "B12": false,
+                                                "notes": "B11: 'May 2021' has no end date"},
+    "profile-user-2UXAuWAmUaH2A5vU-1790959538885-ynuipc": {"B1": false, "B2": false, "B3": false, "B4": false, "B5": false, "B6": false, "B7": false, "B8": false, "B9": false, "B10": false, "B11": false, "B12": false,
+                                                "notes": "not a 1000Jobs CV; clean single-column CV used as the 'no false alarms' example"}
+  }
+}

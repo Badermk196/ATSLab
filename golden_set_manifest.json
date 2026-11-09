@@ -1,0 +1,648 @@
+{
+  "version": "draft-1",
+  "count": 80,
+  "status": "awaiting visual review",
+  "source_note": "Unique SHA-256 PDFs from real/client/reference/nextsteps/test folders; public samples and release duplicates excluded.",
+  "resumes": [
+    {
+      "id": "e60b570b308fb12f",
+      "sha256": "e60b570b308fb12fffde91826266840186827f558362202658194e01ffa3f168",
+      "path": "C:\\ATSLab\\data\\resumes\\10_Riyaj_Shaikh_Generic.pdf",
+      "name": "10_Riyaj_Shaikh_Generic.pdf",
+      "bytes": 111461,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "b0530d97005611e7",
+      "sha256": "b0530d97005611e79d07014f1ed0ea3c0cb95b9e0cd34148f1a4354b86cf985c",
+      "path": "C:\\ATSLab\\data\\resumes\\11_Riyaj_Shaikh_CV.pdf",
+      "name": "11_Riyaj_Shaikh_CV.pdf",
+      "bytes": 7786,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "cdb48bf65d29b68b",
+      "sha256": "cdb48bf65d29b68bed05820d5ef375181d4d5be78d20667016e9edb7b7b0e542",
+      "path": "C:\\ATSLab\\data\\resumes\\14_Riyajshaikh_MichaelPage _2_.pdf",
+      "name": "14_Riyajshaikh_MichaelPage _2_.pdf",
+      "bytes": 26607,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "54d4a4506eb14ee5",
+      "sha256": "54d4a4506eb14ee56adfcd28197b6c71c9bf709330cb98ce9407b66cb296c70d",
+      "path": "C:\\ATSLab\\data\\resumes\\17_Riyajshaikh_AlFuttaimGroup.pdf",
+      "name": "17_Riyajshaikh_AlFuttaimGroup.pdf",
+      "bytes": 25886,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "074739c1ff4f2f82",
+      "sha256": "074739c1ff4f2f82eb792bae02729c84ce9eff76cf91a01fb1a06330911afd64",
+      "path": "C:\\ATSLab\\data\\resumes\\1_Sana_Malik_CV.pdf",
+      "name": "1_Sana_Malik_CV.pdf",
+      "bytes": 213051,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "9a6a570fb8c3205c",
+      "sha256": "9a6a570fb8c3205c5ea91758ade6f664bfdd4a213f1810757be6a66ee382f570",
+      "path": "C:\\ATSLab\\data\\resumes\\21_Riyajshaikh_AstraZeneca _3_.pdf",
+      "name": "21_Riyajshaikh_AstraZeneca _3_.pdf",
+      "bytes": 24704,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "4188a5de31721332",
+      "sha256": "4188a5de3172133294e5427ef7b49f6692bf5baaab88e04bf118df18b3d4f636",
+      "path": "C:\\ATSLab\\data\\resumes\\24_Sana_Malik_CV_Updated.pdf",
+      "name": "24_Sana_Malik_CV_Updated.pdf",
+      "bytes": 299916,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "d774b922ed92d437",
+      "sha256": "d774b922ed92d437e64ad29f891a3d742bbc7d348533527b9827322d0c83a199",
+      "path": "C:\\ATSLab\\data\\resumes\\26_Riyaj_Shaikh_Resume_New_.pdf",
+      "name": "26_Riyaj_Shaikh_Resume_New_.pdf",
+      "bytes": 247207,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "78ecb94c81f0b47e",
+      "sha256": "78ecb94c81f0b47e425f5468c16aba31fe1d8f7682843de38fdc5c14916c4a2c",
+      "path": "C:\\ATSLab\\data\\resumes\\27_Sana_Malik_CVA.pdf",
+      "name": "27_Sana_Malik_CVA.pdf",
+      "bytes": 299639,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "3f67a868ca377f0d",
+      "sha256": "3f67a868ca377f0d4459d8a5be670fd6175c8b06ba38cf362d8daf3295f11bdc",
+      "path": "C:\\ATSLab\\data\\resumes\\2_Sana_Malik_Amazon_Senior_Program_Manager_ACES.pdf",
+      "name": "2_Sana_Malik_Amazon_Senior_Program_Manager_ACES.pdf",
+      "bytes": 27635,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "ae8d4196ba2b00a5",
+      "sha256": "ae8d4196ba2b00a5b9517380432e252e22482e8b007759deb6cb09a9e4b5c9c0",
+      "path": "C:\\ATSLab\\CVS\\1752603411218.pdf",
+      "name": "1752603411218.pdf",
+      "bytes": 527277,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "eee37da9fc6519ac",
+      "sha256": "eee37da9fc6519acdf8bd38fbe28b69b5bb49cfe925267da11b1c0383bae3d54",
+      "path": "C:\\ATSLab\\CVS\\AllanAbbas_Revolut.pdf",
+      "name": "AllanAbbas_Revolut.pdf",
+      "bytes": 14435,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "bef1d3f80effacf1",
+      "sha256": "bef1d3f80effacf1343bab15b8dd4dfac03ceef55f071fd55a4df31ddfa4c25e",
+      "path": "C:\\ATSLab\\CVS\\eliasgk_tactical.pdf",
+      "name": "eliasgk_tactical.pdf",
+      "bytes": 23036,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "943e948798191bfa",
+      "sha256": "943e948798191bfa463c3fa7970e66b413d8206749752acc4b25f18d300c46e2",
+      "path": "C:\\ATSLab\\CVS\\JanaSayed_BakerHughes.pdf",
+      "name": "JanaSayed_BakerHughes.pdf",
+      "bytes": 22022,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "39beda40ad3e6657",
+      "sha256": "39beda40ad3e66576e38da0331445bda50a0fac5f7e13423163eb80b2d04fb35",
+      "path": "C:\\ATSLab\\CVS\\JibranKonkar_AmzoneInternationalLimited.pdf",
+      "name": "JibranKonkar_AmzoneInternationalLimited.pdf",
+      "bytes": 22858,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "178d3648c8ecb4f5",
+      "sha256": "178d3648c8ecb4f5a8dca8cf6fc1abc2e59ca19b9ef6ff4c54ec7789b40fed5e",
+      "path": "C:\\ATSLab\\CVS\\JibranKonpast.pdf",
+      "name": "JibranKonpast.pdf",
+      "bytes": 25082,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "cf8aa3b73e73432f",
+      "sha256": "cf8aa3b73e73432f8327326fb89dce26e770dd5854c74368bc7f838b9f1f584d",
+      "path": "C:\\ATSLab\\CVS\\MathewOsama_Jobgether.pdf",
+      "name": "MathewOsama_Jobgether.pdf",
+      "bytes": 7865,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "3a96db9ba1ad91d0",
+      "sha256": "3a96db9ba1ad91d0da8e011fd8ef375e9f70d30ad319c0807b38930025ef91db",
+      "path": "C:\\ATSLab\\CVS\\MohamedIrfan_Deloitte.pdf",
+      "name": "MohamedIrfan_Deloitte.pdf",
+      "bytes": 22083,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "17044f72cd3fcfea",
+      "sha256": "17044f72cd3fcfea427c3f913c9d8aff2246a663c1537a5e7389375ae881782d",
+      "path": "C:\\ATSLab\\CVS\\NedaSefati_Creatio.pdf",
+      "name": "NedaSefati_Creatio.pdf",
+      "bytes": 24341,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "24ceca935b0c9e17",
+      "sha256": "24ceca935b0c9e1735bf2b0ebb221146047f99686b248842b866bb22af0e7c08",
+      "path": "C:\\ATSLab\\CVS\\profile-user-2UXAuWAmUaH2A5vU-1790959538885-ynuipc.pdf",
+      "name": "profile-user-2UXAuWAmUaH2A5vU-1790959538885-ynuipc.pdf",
+      "bytes": 51586,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "d21b5ac75146be75",
+      "sha256": "d21b5ac75146be75fe9cc47f0daf91ef062ce7610e9c95cb6c7b5408b56b055f",
+      "path": "C:\\ATSLab\\CVS\\profile-user-EMr9Jp2LVZrZnZoU-1789014769502-thk9xu.pdf",
+      "name": "profile-user-EMr9Jp2LVZrZnZoU-1789014769502-thk9xu.pdf",
+      "bytes": 269713,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "2d8adb915df30972",
+      "sha256": "2d8adb915df3097286bcf32840363b5fd76d0990cb263782ca5d1e63176bc5be",
+      "path": "C:\\ATSLab\\CVS\\rashaadnmohammed_Cohere.pdf",
+      "name": "rashaadnmohammed_Cohere.pdf",
+      "bytes": 23702,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "bec426c1652f63cf",
+      "sha256": "bec426c1652f63cfcb455706a8875fc2617730ac88f5744dab447b25ec76a430",
+      "path": "C:\\ATSLab\\CVS\\suzygamal_SuperBridgeSummitDubai.pdf",
+      "name": "suzygamal_SuperBridgeSummitDubai.pdf",
+      "bytes": 21417,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "f7001295b31ec296",
+      "sha256": "f7001295b31ec296ef9319939493e49bbe7bf71ad75440cf6ae048910dea82a8",
+      "path": "C:\\ATSLab\\CVS\\Tammam_Versuni.pdf",
+      "name": "Tammam_Versuni.pdf",
+      "bytes": 10011,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "6c46ebdee0597fc7",
+      "sha256": "6c46ebdee0597fc78b4c94af8b588cf521369d2e6e7690bb116d5358f8a1c0b4",
+      "path": "C:\\ATSLab\\strongcvs\\AdharshSubramanian_JPMorganChaseCo.pdf",
+      "name": "AdharshSubramanian_JPMorganChaseCo.pdf",
+      "bytes": 24212,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "99b136d4e606ff46",
+      "sha256": "99b136d4e606ff46713730f5072e0d19228f3456c0c5f6ed3ae50ca4a503a2f2",
+      "path": "C:\\ATSLab\\strongcvs\\JibranKonkar_AlFuttaim.pdf",
+      "name": "JibranKonkar_AlFuttaim.pdf",
+      "bytes": 25600,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "2283bc3151e10384",
+      "sha256": "2283bc3151e10384d88242a43c6252ec833b8cc7a2508fbd7f5d3a9de232a338",
+      "path": "C:\\ATSLab\\strongcvs\\JibranKonkar_NCRAtleos.pdf",
+      "name": "JibranKonkar_NCRAtleos.pdf",
+      "bytes": 25611,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "34575f854624d7ba",
+      "sha256": "34575f854624d7ba8b26a1827676211ec3664a50dd8c29e9a1a9a436dbfb3a3b",
+      "path": "C:\\ATSLab\\strongcvs\\Jibran_Konkar_Resume.pdf",
+      "name": "Jibran_Konkar_Resume.pdf",
+      "bytes": 131545,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "f92e4bb3307bd15a",
+      "sha256": "f92e4bb3307bd15aae8fb0ebdfb706d63498327fa6ac771244fcbac644471755",
+      "path": "C:\\ATSLab\\strongcvs\\Mohamedshokry_DataRobot.pdf",
+      "name": "Mohamedshokry_DataRobot.pdf",
+      "bytes": 25013,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "423b050a2453299a",
+      "sha256": "423b050a2453299af5f4a865bc86ac5e569e7151a7be8eae6bf5ec4490f2bbd5",
+      "path": "C:\\ATSLab\\strongcvs\\Mohamedshokry_Mastercard.pdf",
+      "name": "Mohamedshokry_Mastercard.pdf",
+      "bytes": 24916,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "76bb25be8c0569b5",
+      "sha256": "76bb25be8c0569b5c71f4a9c3c82866acc6dbecaab59472fbaefb504e14bcc6d",
+      "path": "C:\\ATSLab\\strongcvs\\Mohamedshokry_SiemensEnergy.pdf",
+      "name": "Mohamedshokry_SiemensEnergy.pdf",
+      "bytes": 24694,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "a55448104711ad42",
+      "sha256": "a55448104711ad427b88f15da8ab058923ec0c3212b7f2bc6be73b5db9fab982",
+      "path": "C:\\ATSLab\\strongcvs\\NileshKumar_DiscoveredMENA.pdf",
+      "name": "NileshKumar_DiscoveredMENA.pdf",
+      "bytes": 25922,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "4c9f652ba444bed8",
+      "sha256": "4c9f652ba444bed84e6fbcd717684147de94597ebeeb63160fb9e5353a36220e",
+      "path": "C:\\ATSLab\\strongcvs\\ShikhaSureka_CHANEL.pdf",
+      "name": "ShikhaSureka_CHANEL.pdf",
+      "bytes": 24790,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "851885f28a450448",
+      "sha256": "851885f28a45044882870f6b682df22e7853905274a443548ddb0dab389e533f",
+      "path": "C:\\ATSLab\\strongcvs\\ShikhaSureka_RAKBANK.pdf",
+      "name": "ShikhaSureka_RAKBANK.pdf",
+      "bytes": 24143,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "e43602492d349cd1",
+      "sha256": "e43602492d349cd1019a6b2d480471f8100e03e57ecc471fc7d8dc845388318e",
+      "path": "C:\\ATSLab\\strongcvs\\ShikhaSureka_Sardine.pdf",
+      "name": "ShikhaSureka_Sardine.pdf",
+      "bytes": 24805,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "bdb441754fdc7a1a",
+      "sha256": "bdb441754fdc7a1ac5aef5be40e838105433d123954ec3e302721b80095ada50",
+      "path": "C:\\ATSLab\\strongcvs\\Tareq_ATS_Gemini.pdf",
+      "name": "Tareq_ATS_Gemini.pdf",
+      "bytes": 61144,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "8d84703113f00ec0",
+      "sha256": "8d84703113f00ec0e85b36f8551b224ffae4011c01f52fe271ff8a087ac789e2",
+      "path": "C:\\ATSLab\\strongcvs\\Tareq_MarshMcLennan_latest.pdf",
+      "name": "Tareq_MarshMcLennan_latest.pdf",
+      "bytes": 23904,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "fb3f9ea964cf1600",
+      "sha256": "fb3f9ea964cf1600ed9502f40456620fd5bc92c1b78aa26fc71fb9762d9ff654",
+      "path": "C:\\ATSLab\\weakcvs\\ahmedmmosman_RemotePass.pdf",
+      "name": "ahmedmmosman_RemotePass.pdf",
+      "bytes": 24529,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "4e4cc2860306f051",
+      "sha256": "4e4cc2860306f051c8268ae2629e32ab7715ebba4df7d8d189a153e224f0f42f",
+      "path": "C:\\ATSLab\\weakcvs\\Bader_Makkawi_Intern_CV.pdf",
+      "name": "Bader_Makkawi_Intern_CV.pdf",
+      "bytes": 211162,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "ea9091e7a5d18070",
+      "sha256": "ea9091e7a5d18070270574f92f7455e830c903d3a64c0f47eaaea8f459c51dca",
+      "path": "C:\\ATSLab\\weakcvs\\bassimalkhawalde_SiscoJobs.pdf",
+      "name": "bassimalkhawalde_SiscoJobs.pdf",
+      "bytes": 22676,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "159c09011f7fd4e0",
+      "sha256": "159c09011f7fd4e036f8ea7428f1233ef18d13ccf3417e7d1e1fb4e94b7077e0",
+      "path": "C:\\ATSLab\\weakcvs\\FaisalMicheal_PublicisGroupeHoldingsBV.pdf",
+      "name": "FaisalMicheal_PublicisGroupeHoldingsBV.pdf",
+      "bytes": 20006,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "8af15f1c83a66992",
+      "sha256": "8af15f1c83a669927a11c5ac8962bc6814f6ad0126837e978f4aa04402c565a2",
+      "path": "C:\\ATSLab\\weakcvs\\hanish_Jobgether.pdf",
+      "name": "hanish_Jobgether.pdf",
+      "bytes": 24054,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "9e555134ca687428",
+      "sha256": "9e555134ca6874280646169def3db02f82b643deb715ab471735ed37352f7b92",
+      "path": "C:\\ATSLab\\weakcvs\\MoemenAhmed_AlTayerGroup.pdf",
+      "name": "MoemenAhmed_AlTayerGroup.pdf",
+      "bytes": 22050,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "d60f10b65ca37460",
+      "sha256": "d60f10b65ca374600bd77997f8dfe53ec4d7e71404a46408484a33e42786694b",
+      "path": "C:\\ATSLab\\weakcvs\\MoemenAhmed_AndurilIndustries.pdf",
+      "name": "MoemenAhmed_AndurilIndustries.pdf",
+      "bytes": 22182,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "38672dcc1e042c6b",
+      "sha256": "38672dcc1e042c6b6c62dd5d806c711430408d58502de23513fcd1dfe7533fd0",
+      "path": "C:\\ATSLab\\weakcvs\\MohammadHussain_KEOInternationalConsultants.pdf",
+      "name": "MohammadHussain_KEOInternationalConsultants.pdf",
+      "bytes": 21632,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "bee8b6bc418be096",
+      "sha256": "bee8b6bc418be09608b817d22b425dc17cc1d900167c2774699c2939b95c3c7c",
+      "path": "C:\\ATSLab\\weakcvs\\Rowan_Elatrache_Original_CV.pdf",
+      "name": "Rowan_Elatrache_Original_CV.pdf",
+      "bytes": 41198,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "1dcd2ccf6fc650b2",
+      "sha256": "1dcd2ccf6fc650b2a769a5dcb9f8d979f63813060ffe44f47ea9fe49ddb98075",
+      "path": "C:\\ATSLab\\testcvs\\MohamedShokry-original.pdf",
+      "name": "MohamedShokry-original.pdf",
+      "bytes": 64254,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "6b67180dada67484",
+      "sha256": "6b67180dada67484c162c678861779cc1dc151757b744d89f3ff0e5f8992fb36",
+      "path": "C:\\ATSLab\\testcvs\\Mohamedshokry_Takeda.pdf",
+      "name": "Mohamedshokry_Takeda.pdf",
+      "bytes": 26511,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "a79ba26d408d9c06",
+      "sha256": "a79ba26d408d9c0693c452d220683a1e14a85a8a30ea6526ff43f2df5391a097",
+      "path": "C:\\ATSLab\\testcvs\\Rowan_Elatrache_CV.pdf",
+      "name": "Rowan_Elatrache_CV.pdf",
+      "bytes": 2219466,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "9728c92663fdf556",
+      "sha256": "9728c92663fdf556c825997cf930d00a781716572daa48be733b5b10b9622eb5",
+      "path": "C:\\ATSLab\\testcvs\\Rowan_Elatrache_CV_single_column.pdf",
+      "name": "Rowan_Elatrache_CV_single_column.pdf",
+      "bytes": 148619,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "73f2c4ecf9f2b42d",
+      "sha256": "73f2c4ecf9f2b42d9adb5780d74c19a7b9c8fe62369045631682701ccb02527d",
+      "path": "C:\\ATSLab\\shikhatest\\Shikha_BlackStone.pdf",
+      "name": "Shikha_BlackStone.pdf",
+      "bytes": 25101,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "8619af056e3d4c79",
+      "sha256": "8619af056e3d4c79cff7325baa7ddf69c1c2e62b15af8f176340922cbd40bab4",
+      "path": "C:\\ATSLab\\shikhatest\\Shikha_Etihad.pdf",
+      "name": "Shikha_Etihad.pdf",
+      "bytes": 25637,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "2deebf990af9017c",
+      "sha256": "2deebf990af9017c5c3b97623cb4a79582924bb035cfdb80f9d607523b3cbfdf",
+      "path": "C:\\ATSLab\\shikhatest\\Shikha_Talabat.pdf",
+      "name": "Shikha_Talabat.pdf",
+      "bytes": 24679,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "2e9a14937aaec35f",
+      "sha256": "2e9a14937aaec35f2d89bb5250334cc26d2fda44aa8a9eea0d55f78bcbc59dfd",
+      "path": "C:\\ATSLab\\tariqtest\\Tareq_Claude.pdf",
+      "name": "Tareq_Claude.pdf",
+      "bytes": 92266,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "2ae003358cee2a87",
+      "sha256": "2ae003358cee2a87d810ef94431ad0147596cca11385572212c959cc70842e04",
+      "path": "C:\\ATSLab\\competitorcvs\\1000Jobs_Immersive.pdf",
+      "name": "1000Jobs_Immersive.pdf",
+      "bytes": 25492,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "557506da9b79f627",
+      "sha256": "557506da9b79f627c964c984a4f7e81ee2b15ef7ac630a78debf6fee35f3be48",
+      "path": "C:\\ATSLab\\competitorcvs\\aiApply_Immersive.pdf",
+      "name": "aiApply_Immersive.pdf",
+      "bytes": 97400,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "e4bb156fa1cf51e2",
+      "sha256": "e4bb156fa1cf51e2d4627fb2e1323bc408964a87c7d707ee17e5b248100020a1",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Ali_Maher\\AliMaher_HireFeed_0rlt1c.pdf",
+      "name": "AliMaher_HireFeed_0rlt1c.pdf",
+      "bytes": 23916,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "107bd04e4708722c",
+      "sha256": "107bd04e4708722cf884c8240f4aa8daf45d5f3a862476b2bb66bb4084ffd8fe",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Ali_Maher\\AliMaher_IFZADubai_dgp65m.pdf",
+      "name": "AliMaher_IFZADubai_dgp65m.pdf",
+      "bytes": 23289,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "ee70f184d5fd8710",
+      "sha256": "ee70f184d5fd871064ff1c9bd2013f7d96f2af23adc63d34551a6fec7e153843",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\10x_Team_AlanAbbas_1776796911610.pdf",
+      "name": "10x_Team_AlanAbbas_1776796911610.pdf",
+      "bytes": 50412,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "34cbb0723672d470",
+      "sha256": "34cbb0723672d4709c6b6094d5081360077e1cb4012d5cf90ecc3766b866ab15",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\AP_Moller_Maersk_AlanAbbas_1776782861581.pdf",
+      "name": "AP_Moller_Maersk_AlanAbbas_1776782861581.pdf",
+      "bytes": 15913,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "3d8ebab90eda6df1",
+      "sha256": "3d8ebab90eda6df15e9b6467ec68296eac5d3680882898c14728a5116578a323",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Array_AlanAbbas_1777622689164.pdf",
+      "name": "Array_AlanAbbas_1777622689164.pdf",
+      "bytes": 18509,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "c593e1841f15654d",
+      "sha256": "c593e1841f15654db303279a33f370a93d891de84d12eaebd03af79d774094ea",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Axon_Allan_Abbas_ab6lzr.pdf",
+      "name": "Axon_Allan_Abbas_ab6lzr.pdf",
+      "bytes": 13115,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "89552fc59b91f2d0",
+      "sha256": "89552fc59b91f2d0ee3b668a4a0ab181ed66d6a0e22e330d9c385bef7d22b56e",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Bain_Company_Allan_Abbas_1780665348763.pdf",
+      "name": "Bain_Company_Allan_Abbas_1780665348763.pdf",
+      "bytes": 13313,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "3278091ee8659f98",
+      "sha256": "3278091ee8659f9891be4fc692c6aad19932e58b82aa815c068512d74a49ea2b",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Deliveroo_AlanAbbas_1777269695748.pdf",
+      "name": "Deliveroo_AlanAbbas_1777269695748.pdf",
+      "bytes": 15015,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "0af94bbbb42d4623",
+      "sha256": "0af94bbbb42d462328756595c256ac935cb684eea8cb6168465bb09fe0389475",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Mal_AlanAbbas_1777284217768.pdf",
+      "name": "Mal_AlanAbbas_1777284217768.pdf",
+      "bytes": 14885,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "3f4f90fcf7c252ab",
+      "sha256": "3f4f90fcf7c252aba466ee4a1d5a1eb84d1f66fe964c3d0027973f23e06c65a6",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\PRYPCO_AlanAbbas_1776778593508.pdf",
+      "name": "PRYPCO_AlanAbbas_1776778593508.pdf",
+      "bytes": 16911,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "439b91322cbc3591",
+      "sha256": "439b91322cbc3591c55876dc787a7d409ce3f6a904e75533cf7fe52b944e44e5",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Remitly_Allan_Abbas_1779381832443.pdf",
+      "name": "Remitly_Allan_Abbas_1779381832443.pdf",
+      "bytes": 13037,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "50abf78c1a7c1ca7",
+      "sha256": "50abf78c1a7c1ca75dff8264d9c39ee3a68640fee0f29880412905c84001a328",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Revolut_AlanAbbas_1777295340229.pdf",
+      "name": "Revolut_AlanAbbas_1777295340229.pdf",
+      "bytes": 16133,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "0f66fc52b001b9b0",
+      "sha256": "0f66fc52b001b9b06437bcc10263b464037a2581dd2ce4eaddc59187160288d9",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Revolut_Allan_Abbas_1780318471802.pdf",
+      "name": "Revolut_Allan_Abbas_1780318471802.pdf",
+      "bytes": 13296,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "a0062b23df931240",
+      "sha256": "a0062b23df931240baa0759e5f44302fadb3b6f8bd4b50d42347747574a1a42c",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\Sia_Allan_Abbas_1779199556868.pdf",
+      "name": "Sia_Allan_Abbas_1779199556868.pdf",
+      "bytes": 12963,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "6efdc99b3beae75a",
+      "sha256": "6efdc99b3beae75a8d72490c1722941c2fde2665fcd63a486fdf33cb410ead70",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Allan_Abbas_internal\\talabat_AlanAbbas_1778516417858.pdf",
+      "name": "talabat_AlanAbbas_1778516417858.pdf",
+      "bytes": 13755,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "0ad10c91dfbe2872",
+      "sha256": "0ad10c91dfbe287210d57747094fb02df10208ddb8e326b2384f14cb6e9cc933",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Aryan\\Aryan_ALBACORP_ahtdjp.pdf",
+      "name": "Aryan_ALBACORP_ahtdjp.pdf",
+      "bytes": 22580,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "7fb681332ea28123",
+      "sha256": "7fb681332ea28123ea45c30073ba49d2bce32ef9d14aa508b081b0580d189da8",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Aryan\\Aryan_Globant_njyxcf.pdf",
+      "name": "Aryan_Globant_njyxcf.pdf",
+      "bytes": 25129,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "0985c33d001c28a1",
+      "sha256": "0985c33d001c28a1bd1a4e7b761c89ba0c0c3c7fe0df8e2b867485430293657f",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Aryan\\Aryan_Kraken_9junyi.pdf",
+      "name": "Aryan_Kraken_9junyi.pdf",
+      "bytes": 23140,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "19716ba7a8e9328c",
+      "sha256": "19716ba7a8e9328c82ecb4da4f65334a389cf7319c7699698d0aa025e6eb61d2",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Aryan\\Aryan_TheGreaterChange_ylopey.pdf",
+      "name": "Aryan_TheGreaterChange_ylopey.pdf",
+      "bytes": 22772,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "218338f9f811e3f8",
+      "sha256": "218338f9f811e3f880572e70dec157a35dc016ee1485d3af15f453cc44916499",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\elias_gk\\eliasgk_Pattern_f2n7lm.pdf",
+      "name": "eliasgk_Pattern_f2n7lm.pdf",
+      "bytes": 22513,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "54dbf2fee085b54f",
+      "sha256": "54dbf2fee085b54f1cdc700fe48db0049fe9cb3030685b83052d8aaf56f11dbb",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\jibrankonkar\\JibranKonkar_duUAE_9w8lkq.pdf",
+      "name": "JibranKonkar_duUAE_9w8lkq.pdf",
+      "bytes": 25205,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "01f5971fffe450b5",
+      "sha256": "01f5971fffe450b5f30c49359466c74b5227c76ea3fd972f5f7bdd622a7b5924",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\rashaad_nmohammed\\rashaadnmohammed_ALBACORP_gsieke.pdf",
+      "name": "rashaadnmohammed_ALBACORP_gsieke.pdf",
+      "bytes": 23208,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "1911936e7e584795",
+      "sha256": "1911936e7e5847955b1c2f421835d1dc80574b11182878066aab1da8d534fd00",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\rashaad_nmohammed\\rashaadnmohammed_Puffy_bk45vl.pdf",
+      "name": "rashaadnmohammed_Puffy_bk45vl.pdf",
+      "bytes": 25600,
+      "truth_status": "pending_visual_review"
+    },
+    {
+      "id": "1fda728be1ca0dca",
+      "sha256": "1fda728be1ca0dcae50244ada0498376f47cbd12cdd00ef1d943ba39b7d67fe1",
+      "path": "C:\\ATSLab\\nextsteps-resumes\\nextsteps-cvs\\Riyaj_shaikh\\Riyajshaikh_Cygnify_38ehcr.pdf",
+      "name": "Riyajshaikh_Cygnify_38ehcr.pdf",
+      "bytes": 12002,
+      "truth_status": "pending_visual_review"
+    }
+  ]
+}

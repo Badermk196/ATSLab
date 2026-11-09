@@ -167,8 +167,11 @@ class TestResultsPage(unittest.TestCase):
         at = self.draw(True, with_previous=True)
         self.assertIn("Compared with the previous resume", [h.value for h in at.subheader])
         text = page_text(at)
-        for t in ("Fixed since last version", "Still not fixed", "Template is hard for ATS to read"):
+        # "Template is hard for ATS to read" is no longer claimed for this resume: its headings are not
+        # letter-spaced on the page, so that card is not shown (see test_cards_sorted_tagged_and_quoted).
+        for t in ("Fixed since last version", "Still not fixed"):
             self.assertIn(t, text)
+        self.assertNotIn("Template is hard for ATS to read", text)
 
     def test_no_codes_anywhere(self):
         """No internal id (B1, R3, C1, P6, K...) written by the dashboard. A word from the CV itself
@@ -219,9 +222,13 @@ class TestScoreAndCards(unittest.TestCase):
         self.assertEqual([c["points"] for c in cards], sorted((c["points"] for c in cards), reverse=True))
         self.assertTrue(all(c["tag"] in D.SHOWN_SEVERITY.values() for c in cards))
         self.assertEqual(len({c["key"] for c in cards}), len(cards))            # one card per issue
-        spaced = next(c for c in cards if c["key"] == "template")     # letter-spaced headings: the template card
-        self.assertEqual(spaced["tag"], "Minor")                      # rule 4: only layout problems are Critical
-        self.assertIn("letter-spaced headings", spaced["issues"][0]["reasons"])
+        # Since 2026-11-09 the page decides on letter spacing: these headings are NOT letter-spaced on the page
+        # (measured letter gap 0.06-0.08 of the font size), so the template card is not shown and the strict
+        # parser's finding is kept for the team to verify instead.
+        self.assertFalse([c for c in cards if c["key"] == "template"])
+        self.assertIn("B1", [v["id"] for v in r["to_verify"]])
+        for c in cards:
+            self.assertNotIn("letter-spaced headings", c["issues"][0].get("reasons") or [])
         quotes = [c for c in cards if ISSUE_SHOW(c) == "quotes"]
         for c in quotes:
             if c["key"] in ("pages", "photo", "length"):       # a fact about the page, not a line to quote
@@ -738,11 +745,13 @@ class TestFixesOnRealResumes(unittest.TestCase):
                 if c.get("ai"):
                     self.assertEqual(len(c["issues"]), 1)
                 else:
-                    self.assertEqual({D.ISSUE_OF[i["id"]] for i in c["issues"]}, {c["key"]}, (key, c["name"]))
+                    owners = {D.ISSUE_OF[i["id"]] for i in c["issues"]}
+                    allowed = {"repeated_numbers", "repeated"} if c["key"] == "repeated_numbers" else {c["key"]}
+                    self.assertTrue(owners <= allowed, (key, c["name"], owners))
         if "marsh" in self.r:
             keys = {c["key"] for c in D.issue_cards(self.r["marsh"])}
-            for separate in ("repeated_numbers", "repeated", "glance_boxes"):
-                self.assertIn(separate, keys)                    # each its own card, none merged into another
+            for separate in ("repeated_numbers", "glance_boxes"):
+                self.assertIn(separate, keys)                    # numeric repeats and layout remain distinct cards
 
     def test_one_part_per_issue(self):
         owned = set(C.STANDARD_OWNS) | {"B4", "B11", "R12"}

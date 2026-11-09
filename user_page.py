@@ -188,7 +188,7 @@ def check(inputs):
             r = D.run_check(inputs["pdf"], inputs["name"], with_job, inputs["text"], job_title=inputs["title"] or None)
     except D.CheckError as e:
         msg = str(e)
-        if "API key" in msg or "Keyword extraction failed" in msg:
+        if "API key" in msg or "Keyword extraction failed" in msg or "AI service is busy" in msg:
             msg = USER_TEXT["job_failed"]
         return st.error(msg)
     except Exception:

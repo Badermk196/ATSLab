@@ -65,6 +65,27 @@ asks first, then removes the report and the resume file for good; the deletion s
 
 A database made by an older version gets the new columns when the app starts; no row is lost.
 
+## A clean start (empty History, Needs review, Activity log and daily counts)
+
+`reset_data.py` empties the app's data and keeps the structure, the settings and the admin accounts:
+
+```
+py -3.12 reset_data.py              show what will go, ask, then clear it
+py -3.12 reset_data.py --dry-run    only show it (nothing is deleted)
+py -3.12 reset_data.py --yes        clear it without the question
+py -3.12 reset_data.py --caches     also empty cv_reviews\ and dashboard_jobs\ (see below)
+```
+
+It removes every check (History, with its report), their notes and their "Reviewed by" (Needs review), the
+Activity log, the daily check counts, the admin sign-in locks and every kept resume file. It keeps the tables
+(the structure), the settings an admin saved (links, days, limits, the "Needs review" rules) and the admin
+accounts (they come from the secrets). Nothing is written to the log, so it stays empty.
+
+`cv_reviews\` (the saved AI reviews) and `dashboard_jobs\` (the saved job descriptions) hold text from real
+users, so they are kept unless `--caches` is given. With `cv_reviews\` empty, the two slow reference tests
+(`test_reference`, `test_strong`) need the AI key again, and with `dashboard_jobs\` empty one dashboard test
+checks its resume without a job.
+
 ## Limits that protect the server
 
 - **Daily checks:** each person has 3 free checks a day on the User page (the setting above). They are counted on
@@ -148,3 +169,47 @@ The app follows the visitor's system setting (light or dark). The colors are in 
 
 - Open `/user`, upload a resume, and see the score.
 - Open `/admin`, sign in, and click **History**: that check is listed as "User page".
+
+## After changing any code: restart the app
+
+`.streamlit/config.toml` sets `[server] fileWatcherType = "none"` (the watcher was turned off because it scanned every
+loaded library on each page run, which made the pages slow and filled the log). The app therefore keeps the code it
+loaded when the server started: **an edit to a .py file does not change the running app.**
+
+- Stop the app (**Stop ATS Lab** on the desktop, or Ctrl+C in its terminal) and start it again the same way.
+- Then reload the page in the browser.
+- A page that behaves like the old version (for example the client comparison report showing the two files the wrong
+  way round, or the two upload slots with no separate names) means the app is still running old code: restart it.
+
+## Comparison reports saved before 2026-11-02 (the two files read the wrong way round)
+
+A few client comparison reports saved before the role fix describe the 1000Jobs resume as the user's own resume: the
+1000Jobs resume's own issues then appear under **Improved** and **Issues in the original resume**. Those reports were
+written by the app while it ran the older code (see the restart note above); the code is fixed, the saved text is not.
+
+```
+py -3.12 fix_comparison_reports.py                 look only: which reports are affected (nothing is written)
+py -3.12 fix_comparison_reports.py --apply          rebuild them from the files the app kept
+py -3.12 fix_comparison_reports.py --apply --also "C:\folder"     also look there for the other file
+```
+
+Each rebuilt report is written to the History row again, and the old report is backed up first to
+`.work/fixed_reports/backup-<id>.html`. Scores, dates and every other field of the row stay as they are. A report of a
+check that was made with a job description is only listed (rebuilding it needs the job text): re-run that check in the
+app.
+
+## When the AI service is busy (the red box said "Keyword extraction failed")
+
+OpenRouter sometimes answers `503 UNAVAILABLE` (provider busy) or does not answer at all. That is normal now and then.
+Since 4 November 2026 the Lab handles it itself:
+
+- The same model is asked again twice (waiting 2s, then 4s).
+- If it still does not answer, the prompt goes to `google/gemini-2.5-flash-lite` instead
+  (change it with the environment variable `ATSLAB_AI_FALLBACK_MODEL`).
+- Only if both fail, the check stops with one plain sentence:
+  *"The AI service is busy right now, so this job could not be read. Nothing was checked - press Run check again in a
+  minute."*
+- The provider's own answer (status, reason) is printed in the server log, where the team can read it, and is never
+  shown in the app. A wrong API key or a model that does not exist is not retried.
+
+So: **a red box about a busy AI means "press Run check again"** - nothing was scored and nothing was lost.

@@ -153,12 +153,21 @@ class LayoutBase(unittest.TestCase):
 class TestDesignChecks(LayoutBase):
     def test_every_design_issue_is_detected(self):
         f = self.lay["findings"]
-        for fid in ("D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"):
+        for fid in ("D1", "D2", "D3", "D4", "D5", "D6", "D7", "D9", "D10"):     # D8 is switched off: below
             with self.subTest(issue=fid, label=Y.DESIGN[fid][0]):
                 self.assertTrue(f[fid]["found"], f[fid])
                 self.assertTrue(f[fid]["evidence"], fid)
         r = C.score_cv(self.designed, None, ROLE, role_cache=self.tmp)
         self.assertTrue(r["layout"]["findings"]["D11"]["found"])               # 3 pages for 2 years
+
+    def test_the_low_contrast_card_is_switched_off(self):
+        """4 Nov 2026: the D8 card ("Light or low-contrast text") is off - a real report quoted ordinary resume text
+        as hard to read. The rule is still here and still measures contrast: see Y.CONTRAST_CHECK."""
+        self.assertFalse(Y.CONTRAST_CHECK)
+        self.assertFalse(self.lay["findings"]["D8"]["found"])
+        self.assertIn("D8", Y.DESIGN)                                          # the check can be switched back on
+        self.assertGreater(Y.contrast((30, 30, 30), (255, 255, 255)), Y.LOW_CONTRAST)   # dark on white: fine
+        self.assertLess(Y.contrast((200, 200, 200), (255, 255, 255)), Y.LOW_CONTRAST)   # light grey: unreadable
 
     def test_plain_cv_has_no_design_issue(self):
         found = [k for k, v in self.lay_plain["findings"].items() if v["found"]]
@@ -199,8 +208,9 @@ class TestScoreWithDesign(LayoutBase):
         for fid in ("D3", "D4", "D10"):                    # sidebar, columns, reading order: inside the template card
             self.assertNotIn(fid, sev)
         self.assertEqual(sev["TPL"], "Critical")
-        for fid in ("D1", "D5", "D2", "D7", "D8"):
+        for fid in ("D1", "D5", "D2", "D7"):               # D8 (low contrast) is switched off since 4 Nov 2026
             self.assertEqual(sev[fid], "Minor", fid)
+        self.assertNotIn("D8", sev)
         plain = C.score_cv(self.plain, None, ROLE, role_cache=self.tmp)
         self.assertGreater(plain["parts"]["readability"], r["parts"]["readability"] + 20)
         self.assertFalse([i for i in plain["issues"] if i["id"].startswith("D") or i["id"] == "TPL"])
@@ -209,7 +219,8 @@ class TestScoreWithDesign(LayoutBase):
 
     def test_merged_title_and_year_only_dates_are_quoted(self):
         r = C.score_cv(self.designed, None, ROLE, role_cache=self.tmp)
-        p5 = " ".join(r["structure_checks"]["T4"]["evidence"])
+        # 2026-11-09: year-only dates have their own check (T4C) since the job card was split
+        p5 = " ".join(r["structure_checks"]["T4C"]["evidence"])
         self.assertIn("year only", p5)                                # year-only dates: the date lines are quoted
         t11 = " ".join(r["structure_checks"]["T11"]["evidence"])
         self.assertIn("Senior / Data Analyst", t11)                 # two titles in one: its own Minor check
@@ -232,8 +243,13 @@ class TestDashboardWithDesign(LayoutBase):
                 self.assertTrue(D.evidence(c, r), c["name"])
         photo = next(c for c in cards if c["key"] == "photo")
         self.assertIn("photo version for direct emails", photo["fix"])
-        dates = next(c for c in cards if c["key"] == "job_details")
-        self.assertIn("2023 - 2025", " ".join(D.evidence(dates, r)))
+        # since 2026-11-09 the job-details check is right too seldom on the golden set (44%): it is not scored and
+        # no longer shown as a card. What the rule found is kept for the team in the verify list.
+        self.assertFalse([c for c in cards if c["key"] == "job_details"])
+        t4 = (r.get("structure_checks") or {}).get("T4") or {}
+        if t4.get("moved_to_verify"):
+            self.assertIn("2023 - 2025", " ".join(t4.get("evidence") or []))
+            self.assertIn("T4", [v["id"] for v in r["to_verify"]])
 
     def test_page_has_no_visual_view(self):
         import dashboard as D
