@@ -1,4 +1,4 @@
-# Never put these in a code repository: secrets, real resumes, the history database, results.
+﻿# Never put these in a code repository: secrets, real resumes, the history database, results.
 # The private folders below hold real user data (resumes, reports, job descriptions, AI reviews):
 # they must never be committed, packed or uploaded.
 .streamlit/secrets.toml
@@ -48,5 +48,4 @@ riyaj-portfolio/
 # the Manus session folder
 .manus/
 
-deploy/cloud/atslab-deploy.tar.gz
 deploy/cloud/atslab-deploy.tar.gz
