@@ -259,3 +259,7 @@ Git push kept failing with `schannel: AcquireCredentialsHandle failed: SEC_E_NO_
 Fix: a small local HTTP-to-HTTPS forward proxy (`.work/scripts/github_proxy.js`, port 8799) that does the TLS leg with Node's OpenSSL, plus the GitHub connector token sent as `Authorization: Basic base64(x-access-token:TOKEN)` with `credential.helper=` disabled. Git then pushes to `http://127.0.0.1:8799/Badermk196/ATSLab.git`.
 
 Result: 4 commits pushed (`57ef99c..533e131`), remote `main` and local `main` identical (`533e131`), working tree clean. Only `.streamlit/secrets.toml.example` is tracked; the real secrets file, `data/` and the deploy tarball stay untracked.
+
+## 17 Nov 2026 - Simpler push method found (no proxy needed)
+
+Git push now works without the local proxy: use `-c http.sslBackend=openssl` and pass the token as an `Authorization: Basic` header, pushing straight to https://github.com/Badermk196/ATSLab.git. The Windows schannel TLS stack is the only broken part; OpenSSL works. Network egress must be allowed for the command. `git ls-remote` still hangs on this machine (getaddrinfo thread), so verify the pushed commit through the GitHub API instead. Result: commit 12a0892 pushed, local main and origin/main identical, working tree clean.
