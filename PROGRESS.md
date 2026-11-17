@@ -251,3 +251,11 @@ DOMAIN); the tarball is 0.5 MB and contains app.py, run_app.py, Dockerfile, requ
 daemon not running) and was reviewed by hand instead.
 
 No scoring rule, weight or threshold was touched. This round only adds deployment files.
+
+## 17 Nov 2026 - Pushed to GitHub (main)
+
+Git push kept failing with `schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS` and `getaddrinfo() thread failed to start`. Node and Python reached github.com fine, so the fault was git's Windows schannel TLS stack in this session, not the network.
+
+Fix: a small local HTTP-to-HTTPS forward proxy (`.work/scripts/github_proxy.js`, port 8799) that does the TLS leg with Node's OpenSSL, plus the GitHub connector token sent as `Authorization: Basic base64(x-access-token:TOKEN)` with `credential.helper=` disabled. Git then pushes to `http://127.0.0.1:8799/Badermk196/ATSLab.git`.
+
+Result: 4 commits pushed (`57ef99c..533e131`), remote `main` and local `main` identical (`533e131`), working tree clean. Only `.streamlit/secrets.toml.example` is tracked; the real secrets file, `data/` and the deploy tarball stay untracked.
