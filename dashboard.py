@@ -78,10 +78,15 @@ ISSUES = {
                         "fix": "Write every heading as a normal word, for example \"Education\".",
                         "we_fix": "Our template writes every heading as a plain, standard word."},
     "skills_unreadable": {"ids": ["B2", "R9"], "name": "Skills section is hard to read", "show": "skills_ats",
-                          "why": "The ATS cannot pick out your individual skills, so they may not count in a "
-                                 "recruiter's search.",
-                          "fix": "List your skills as plain words separated by commas under a \"Skills\" heading.",
-                          "we_fix": "We list your skills as clean, searchable words."},
+                          "why": "An ATS does not read your resume like a person: it looks for a simple list of "
+                                 "skills. Here it found something else (a job title, a category name, or a heading "
+                                 "with nothing under it), so it cannot tell which skills you have. Skills it cannot "
+                                 "read do not count when a recruiter searches for them.",
+                          "fix": "Under a heading called \"Skills\", write your skills as plain words separated by "
+                                 "commas, for example: Project Management, Stakeholder Management, Data Analysis, "
+                                 "Power BI. Do not use a job title, a table or columns for this list.",
+                          "we_fix": "We list your skills as clean, searchable words under a standard \"Skills\" "
+                                    "heading."},
     "watermark": {"ids": ["B3"], "name": "Extra text appears inside your resume", "show": "watermark",
                   "why": "The ATS reads the \"Prepared with\" note as part of your resume and mixes it into your content.",
                   "fix": "Remove the note from the resume text.",
@@ -197,8 +202,11 @@ ISSUES = {
                   "fix": "Keep at most 2 bullets for each role that ended 10 or more years ago.",
                   "we_fix": "We keep older roles short so your recent work stands out."},
     "tense": {"ids": ["C14"], "name": "Past jobs written in the present tense", "show": "quotes",
-              "why": "Mixing tenses makes it unclear which work you still do.",
-              "fix": "Write past jobs in the past tense (\"Managed\", not \"Manage\").",
+              "why": "In a job you have left, the present tense (\"Manage\") reads as if you still do that work. "
+                     "This is a writing style point, not a reading problem: an ATS reads the resume either way, "
+                     "and it only lowers the Content part a little.",
+              "fix": "Write the jobs you have left in the past tense (\"Managed\", not \"Manage\") and keep the "
+                     "present tense for the job you do now.",
               "we_fix": "We write past jobs in the past tense and your current job in the present."},
     "education_items": {"ids": ["T2"], "name": "Non-degree items under Education", "show": "quotes",
                         "why": "Programs, challenges and courses under Education hide your real degree.",
@@ -461,6 +469,25 @@ CLIENT_TEXT = {
 MAX_QUOTE_LINES, MAX_QUOTE_CHARS = 2, 160     # "before" quotes in the client report: short
 MAX_IMPROVE = 4                # "What we'll fix": at most this many lines, each tied to an issue in this resume
 MAX_PROMISE = 95               # "can reach about X": never more than this
+# The X on an issue card (team only): why the team set an issue aside. This is the Lab's teaching signal.
+TRAIN_REASONS = {
+    "false_alarm": "False alarm: the issue is not really in the resume",
+    "not_important": "Not important for this role or client",
+    "already_fixed": "Already fixed in the resume",
+    "lab_rule_wrong": "The Lab's rule is too strict here",
+    "other": "Other reason",
+}
+TRAIN_TEXT = {
+    "ask": "Why are you setting this issue aside?",
+    "note": "Add a short note (optional)",
+    "save": "Save and set aside",
+    "cancel": "Cancel",
+    "saved": "Saved. The Lab will learn from this.",
+    "log_title": "Why the team set issues aside (teaching log)",
+    "log_sub": "Every X is saved with its reason. Use this to fix the checks that cause false alarms.",
+    "export": "Download the teaching log (CSV)",
+    "failed": "The reason was not saved ({why}). The issue was still set aside.",
+}
 
 
 JOB_TITLE_MISSING = "Please enter the target role (job title, for example \"Brand Marketing Manager\"). It is required with a job description."
@@ -619,6 +646,7 @@ def run_check(pdf_bytes, filename, with_job, text, cache=None, role_cache=None, 
         safe_remove(pdf_path)                       # never fails the check (Windows may hold the file a moment)
     r["cv"] = filename
     r["_size"] = len(pdf_bytes)
+    r["_uid"] = hashlib.sha1(os.urandom(12)).hexdigest()[:16]    # one result, one id (see report_doc_of)
     r["v3"]["cv"] = filename
     r["_doc"] = r.get("_doc") or doc               # for quotes from the CV (headers / footers left out)
     return r
@@ -1414,6 +1442,10 @@ REPORT_TEXT = {
     "std_note": "The resume is checked against the 1000Jobs resume standard: readability, content and structure.",
     "again_job": "Paste the job description to check this resume against the job.",
     "again_std": "Check this resume again without the job description.", "again": "Check again",
+    "set_aside": "Set an issue aside (team only)",
+    "set_aside_none": "Nothing is set aside. Press X to stop an issue from counting.",
+    "set_aside_sub": "{n} issue(s) set aside: they no longer count. Press the same button again to put one back.",
+    "set_aside_x": "✕  {name}", "set_aside_back": "↺  {name}",
 }
 # 'What the ATS reads now' only for problems in the text an ATS extracts; the rest is the resume as people read it
 ATS_SHOWS = {"spaced", "skills_ats", "watermark", "header", "markdown", "html", "placeholder", "glance", "backticks",
@@ -1437,9 +1469,20 @@ def esc(text):
 
 
 def fmt(p):
-    """Points as shown: whole numbers from 1 up, one decimal below."""
-    p = round(float(p), 1)
-    return f"{round(p):d}" if abs(p) >= 1 else f"{p:g}"
+    """Points and parts as shown: 71 stays 71, 71.1 stays 71.1, 0.4 stays 0.4 (a small change is never rounded
+    away). The SCORE itself is shown by fmt_score below (a whole number, Bader's rule)."""
+    return f"{round(float(p), 1):g}"
+
+
+def fmt_score(p):
+    """The score as a whole number: 79.9 shows 79, 79.0 shows 79, 100 shows 100. Bader's rule: the score never
+    shows a decimal (the decimals are dropped, never shown)."""
+    return str(int(float(p)))
+
+
+def pt_word(p):
+    """'pt' only when the value really is 1 point, 'pts' otherwise (the number itself keeps one decimal)."""
+    return "pt" if abs(float(p) - 1) < 0.05 else "pts"
 
 
 def color_for(score):
@@ -1463,7 +1506,7 @@ def gauge(score, size, caption="", label=""):
             f'stroke-linecap="round" stroke-dasharray="{filled:.1f} {circ:.1f}" '
             f'transform="rotate(-90 {size/2} {size/2})"/>'
             f'<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="{size * 0.28:.0f}" '
-            f'font-weight="800" fill="#0f172a">{round(score)}</text></svg>'
+            f'font-weight="800" fill="#0f172a">{fmt_score(score)}</text></svg>'
             + (f'<div class="lbl" style="color:{col}">{html.escape(label)}</div>' if label else "")
             + (f'<div class="cap">{html.escape(caption)}</div>' if caption else "") + "</div>")
 
@@ -1539,8 +1582,9 @@ def headline_sentence(s, who):
     if s["rebuild"]:
         n = s["n_fix"] - s["n_layout"]
         more = REPORT_TEXT["rebuild_more"].format(n=n, s="s" if n != 1 else "") if n > 0 else ""
-        return REPORT_TEXT["headline_rebuild"].format(who=who, after=fmt(s["after"]), more=more)
-    return REPORT_TEXT["headline"].format(who=who, after=fmt(s["after"]), n=s["n_fix"], s="s" if s["n_fix"] != 1 else "")
+        return REPORT_TEXT["headline_rebuild"].format(who=who, after=fmt_score(s["after"]), more=more)
+    return REPORT_TEXT["headline"].format(who=who, after=fmt_score(s["after"]), n=s["n_fix"],
+                                          s="s" if s["n_fix"] != 1 else "")
 
 
 LAYOUT_CARDS = {"template", "page_format", "image_page", "sidebar", "columns", "reading_order"}
@@ -1565,6 +1609,162 @@ def report_summary(r, cards):
             "critical": sum(c["severity"] == "Critical" for c in cards),
             "available": round(max(0.0, after - now), 1), "best_part": best,
             "best_gain": round(gain[best], 1) if best else 0.0}
+
+
+def set_aside_key(r):
+    """The session key of the issues the team set aside for THIS result (a new check starts with none)."""
+    return f"set_aside::{r.get('cv')}::{r.get('score')}"
+
+
+def set_aside_cards(r):
+    """The card keys the team set aside for this result."""
+    return list(st.session_state.get(set_aside_key(r)) or [])
+
+
+def set_aside_ids(r):
+    """The scorer issue ids behind the cards the team set aside (one card can carry several issues)."""
+    keys = set(set_aside_cards(r))
+    if not keys:
+        return set()
+    return {i["id"] for c in issue_cards(r) if c["key"] in keys for i in c["issues"]}
+
+
+def view_with(r, set_aside):
+    """The result as the report should read it: an issue the team set aside is treated as FIXED, so its points come
+    back through the scorer's own counterfactual (never more). The parts are scaled the same way, so the score, the
+    parts and the issue list always agree. No rule, weight, threshold or cap is changed here."""
+    if not set_aside or "_parts_with" not in r:
+        return r
+    keep = [i for i in r["issues"] if i["id"] not in set_aside]
+    parts, score = r["_parts_with"](sorted(set_aside))
+    costs = r.get("_part_costs") or {}
+    issues, explain = [], {}
+    for part, value in parts.items():
+        loss = round(100 - round(value, 1), 1)
+        mine = [i for i in keep if i["part"] == part]
+        total = sum(max(0.0, costs.get(i["id"], 0.0)) for i in mine)
+        k = loss / total if total > 0 else 1.0
+        items = []
+        for i in mine:
+            pp = round(max(0.0, costs.get(i["id"], 0.0)) * k, 1)
+            issues.append({**i, "part_points": pp})
+            if pp > 0:
+                items.append({"id": i["id"], "name": i["name"], "points": pp})
+        items.sort(key=lambda x: -x["points"])
+        explain[part] = {"loss": loss, "items": items,
+                         "other": round(loss - sum(x["points"] for x in items), 1)}
+
+    def score_with(ids):
+        """'Can reach' for this view: the issues set aside stay fixed, so it never falls below the score shown."""
+        return r["_parts_with"](sorted(set(ids) | set(set_aside)))[1]
+
+    return {**r, "issues": issues, "parts": parts, "score": score,
+            "label": C.label_for(score, parts, issues), "part_explain": explain, "_score_with": score_with}
+
+
+def put_aside(r, card_key, on=True):
+    """Set one issue aside, or put it back. The report re-runs its own maths either way."""
+    key = set_aside_key(r)
+    new = [k for k in set_aside_cards(r) if k != card_key]
+    if on:
+        new.append(card_key)
+    st.session_state[key] = new
+
+
+def card_evidence(r, card, limit=300):
+    """The resume lines the card shows, as one short line: what the team is judging when they press X."""
+    try:
+        lines = [q for q in evidence(card, r) if q]
+    except Exception:
+        lines = []
+    return " | ".join(" ".join(str(q).split()) for q in lines)[:limit]
+
+
+def csv_text(rows, columns=None):
+    """A small CSV (used by the training export). A value with a comma, a quote or a new line is quoted."""
+    columns = columns or (list(rows[0]) if rows else [])
+
+    def cell(v):
+        v = "" if v is None else str(v)
+        return '"' + v.replace('"', '""') + '"' if any(ch in v for ch in ',"\n') else v
+
+    out = [",".join(columns)] + [",".join(cell(row.get(c, "")) for c in columns) for row in rows]
+    return "\r\n".join(out) + "\r\n"
+
+
+def training_table(rows):
+    """One line per issue the team set aside: how many times, why, and when it last happened."""
+    seen = {}
+    for t in rows:
+        k = (t.get("issue_id") or "", t.get("issue_name") or "")
+        d = seen.setdefault(k, {"times": 0, "reasons": {}, "last": ""})
+        d["times"] += 1
+        r = t.get("reason") or ""
+        d["reasons"][r] = d["reasons"].get(r, 0) + 1
+        d["last"] = max(d["last"], t.get("at") or "")
+    out = [{"Issue": k[1], "Code": k[0], "Times set aside": d["times"],
+            "Why": "; ".join(f"{TRAIN_REASONS.get(r, r)} x{n}" for r, n in sorted(d["reasons"].items())),
+            "Last time": d["last"]} for k, d in seen.items()]
+    return sorted(out, key=lambda x: (-x["Times set aside"], x["Issue"]))
+
+
+def set_aside_controls(r, trainer=None, training=None):
+    """Team only: one button per issue card. X asks WHY first, then sets the issue aside (it stops counting and the
+    score goes up by exactly what that issue costs, small changes included) and keeps the reason, so the Lab learns
+    from the same issue coming back on other resumes. The same button puts an issue back."""
+    if "_parts_with" not in r:
+        return
+    cards = issue_cards(r)
+    if not cards:
+        return
+    key, off = set_aside_key(r), set(set_aside_cards(r))
+    ask = f"{key}::ask"
+    pending = st.session_state.get(ask)
+    pending = pending if any(c["key"] == pending for c in cards) else None
+    with st.expander(REPORT_TEXT["set_aside"], expanded=bool(off) or pending is not None):
+        st.caption(REPORT_TEXT["set_aside_sub"].format(n=len(off)) if off else REPORT_TEXT["set_aside_none"])
+        cols = st.columns(2, gap="small")
+        for n, c in enumerate(cards):
+            back = c["key"] in off
+            label = REPORT_TEXT["set_aside_back" if back else "set_aside_x"].format(name=c["name"])
+            if cols[n % 2].button(label, key=f"{key}::{c['key']}", width="stretch"):
+                if back:
+                    put_aside(r, c["key"], False)
+                    st.session_state.pop(ask, None)
+                else:
+                    st.session_state[ask] = c["key"]          # ask why first: the reason is the teaching signal
+                st.rerun()
+        card = next((c for c in cards if c["key"] == pending), None)
+        if card is not None:
+            st.markdown(f"**{TRAIN_TEXT['ask']}**  \n{card['name']}")
+            reason = st.radio(TRAIN_TEXT["ask"], list(TRAIN_REASONS), format_func=TRAIN_REASONS.get,
+                              key=f"{ask}::reason", index=None, label_visibility="collapsed")
+            note = st.text_input(TRAIN_TEXT["note"], key=f"{ask}::note")
+            a, b = st.columns([1, 1], gap="small")
+            if a.button(TRAIN_TEXT["save"], key=f"{ask}::save", type="primary", width="stretch",
+                        disabled=reason is None):
+                if trainer is not None:
+                    try:
+                        trainer(r, card, reason, note, card_evidence(r, card))
+                    except Exception as e:      # the X must still work if the teaching log cannot be saved
+                        st.warning(TRAIN_TEXT["not_saved"].format(why=type(e).__name__))
+                put_aside(r, card["key"], True)
+                for k in (ask, f"{ask}::reason", f"{ask}::note"):
+                    st.session_state.pop(k, None)
+                st.toast(TRAIN_TEXT["saved"])
+                st.rerun()
+            if b.button(TRAIN_TEXT["cancel"], key=f"{ask}::cancel", width="stretch"):
+                st.session_state.pop(ask, None)
+                st.rerun()
+        rows = (training() if training else None) or []
+        if rows:
+            st.divider()
+            st.markdown(f"**{TRAIN_TEXT['log_title']}**")
+            st.caption(TRAIN_TEXT["log_sub"])
+            table = training_table(rows)
+            st.dataframe(table, hide_index=True, width="stretch")
+            st.download_button(TRAIN_TEXT["export"], csv_text(table), "atslab_training.csv", "text/csv",
+                               key=f"{key}::export")
 
 
 def plain_name(i):
@@ -1759,8 +1959,8 @@ def score_html(r, cards, plain=False):
               + (f'<span class="count c-gain"><b>+{fmt(s["available"])}</b>'
                  f'{REPORT_TEXT["available"].format(n=s["n_fix"], es="es" if s["n_fix"] != 1 else "")}</span>'
                  if s["n_fix"] else ""))
-    bar = (f'<div class="barlbl"><span>{REPORT_TEXT["now"].format(now=fmt(s["now"]))}</span>'
-           f'<span class="aft">{REPORT_TEXT["after"].format(after=fmt(s["after"]))}</span></div>'
+    bar = (f'<div class="barlbl"><span>{REPORT_TEXT["now"].format(now=fmt_score(s["now"]))}</span>'
+           f'<span class="aft">{REPORT_TEXT["after"].format(after=fmt_score(s["after"]))}</span></div>'
            f'<div class="bar"><i style="width:{s["after"]:.0f}%;background:#fde68a"></i>'
            f'<i style="width:{s["now"]:.0f}%;background:{color_for(s["now"])}"></i></div>') if s["n_fix"] else ""
     held = f'<div class="note">{REPORT_TEXT["held"]}</div>' if any("no numbers" in g for g in r["gates"]) else ""
@@ -1769,7 +1969,7 @@ def score_html(r, cards, plain=False):
             f'<span class="lbl" style="background:{bg};color:{fg}">{esc(r["label"])}</span>'
             f'<span class="muted">{checked} · <span class="nw">{L.TODAY.strftime("%d %b %Y").lstrip("0")}</span></span>'
             f'<div class="big">{big}</div><p class="lead">{lead}</p>{bar}<div class="counts">{counts}</div>'
-            f'{held}</div></div>' + (f'<div class="plain">{REPORT_TEXT["plain_job" if r["mode"] == "job" else "plain"].format(score=fmt(r["score"]))}</div>'
+            f'{held}</div></div>' + (f'<div class="plain">{REPORT_TEXT["plain_job" if r["mode"] == "job" else "plain"].format(score=fmt_score(r["score"]))}</div>'
                                      if plain else "") + '</div>')
 
 
@@ -1846,7 +2046,7 @@ def parts_html(r, cards):
 
 
 def issue_html(n, c, r, opened=False):
-    pts = (f'<span class="gain">+{fmt(c["points"])} pt{"" if fmt(c["points"]) == "1" else "s"}</span>' if c["points"] >= 0.1 else
+    pts = (f'<span class="gain">+{fmt(c["points"])} {pt_word(c["points"])}</span>' if c["points"] >= 0.1 else
            f'<span class="gain wait">{esc(BLOCKED_FIRST[c["blocked_by"]])}, then +{fmt(c["points_after"])}</span>'
            if c.get("blocked_by") else "")
     meta = [c["tag"], PART_NAMES.get(card_part(c), "")]
@@ -1969,11 +2169,12 @@ def change_text(before, after):
 def compared_html(cmp, old=None, new=None):
     """The two scores side by side - the original resume on the left, our 1000Jobs resume on the right - each with the
     file it belongs to under it, so a file in the wrong place is impossible to miss."""
-    d = round(cmp["new"]) - round(cmp["old"])
+    d = int(cmp["new"]) - int(cmp["old"])
     side = lambda cls, key, score, name, extra="": (
-        f'<div class="{cls}">{gauge(score, 96)}<div><div class="who">{CLIENT_TEXT[key].format(score=fmt(score))}'
+        f'<div class="{cls}">{gauge(score, 96)}<div><div class="who">{CLIENT_TEXT[key].format(score=fmt_score(score))}'
         f'{extra}</div><div class="file">{esc(name)}</div></div></div>')
-    chg = f' <span class="chg{" down" if d < 0 else ""}">({change_text(cmp["old"], cmp["new"])})</span>'
+    chg = (f' <span class="chg{" down" if d < 0 else ""}">'
+           f'({CLIENT_TEXT["change"].format(sign="+" if d >= 0 else "−", change=abs(d))})</span>')
     rows = "".join(f'<tr><td>{PART_NAMES[p]}</td><td>{fmt(a)}</td><td>{fmt(b)}</td><td>{change_text(a, b)}</td></tr>'
                    for p, a, b in cmp["parts"])
     return (f'<h2>{CLIENT_TEXT["compared"]}</h2><div class="sub">{CLIENT_TEXT["compared_sub"]}</div><div class="card">'
@@ -2127,6 +2328,18 @@ def pdf_of(doc, cache=None):
     return cache[key]
 
 
+def report_doc_of(r, cards, cache=None):
+    """The report document (HTML text) of one result, built once and kept for the session: a click on the page
+    (a nav item, a button) then only looks it up, so the page stays quick (0.6-0.8 s saved on every rerun)."""
+    uid = r.get("_uid")
+    if not uid:
+        return report_document(r, cards)
+    docs = (cache if cache is not None else {}).setdefault("docs", {})
+    if uid not in docs:
+        docs[uid] = report_document(r, cards)
+    return docs[uid]
+
+
 # ---------------------------------------------------------------------------
 # Page sections (Streamlit)
 # ---------------------------------------------------------------------------
@@ -2134,9 +2347,9 @@ def show_compare(old, r):
     cmp = compare_versions(old, r)
     st.subheader("Compared with the previous resume")
     with st.container(border=True):
-        delta = cmp["score_after"] - cmp["score_before"]
-        st.markdown(f"Resume Score **{cmp['score_before']:.0f} → {cmp['score_after']:.0f}** "
-                    f"({'+' if delta >= 0 else ''}{delta:.0f})")
+        delta = int(cmp["score_after"]) - int(cmp["score_before"])
+        st.markdown(f"Resume Score **{fmt_score(cmp['score_before'])} → {fmt_score(cmp['score_after'])}** "
+                    f"({'+' if delta >= 0 else ''}{delta})")
         a, b = st.columns(2)
         with a:
             st.markdown("**Fixed since last version**")
@@ -2222,23 +2435,29 @@ def show_details(r):
                        + (f"; {ai['rejected']} left out because their quote is not in the resume" if ai["rejected"] else ""))
 
 
-def render(r, with_job=None, previous=None, client=False, swapped=None):
+def render(r, with_job=None, previous=None, client=False, swapped=None, after_score=None, set_aside=False,
+           trainer=None, training=None):
     if client and previous is not None:              # the client comparison report: its 3 sections only
         return render_client(previous, r, swapped)
     if client:
         st.info(CLIENT_TEXT["need_original"])
-    cards = issue_cards(r)
-    for note in r.get("notes") or []:               # a part that could not run on this computer, said plainly
+    view = view_with(r, set_aside_ids(r)) if set_aside else r
+    cards = issue_cards(view)
+    for note in view.get("notes") or []:            # a part that could not run on this computer, said plainly
         st.info(note)
-    html_block(score_html(r, cards) + parts_html(r, cards))
+    html_block(score_html(view, cards) + parts_html(view, cards))
+    if after_score:                                 # the Admin page's "Second opinion" cards (never on the user page)
+        after_score()
     slot = st.empty()                               # the download button: filled last, after the PDF is made
     slot.caption(REPORT_TEXT["pdf_preparing"])
     if previous is not None:
-        show_compare(previous, r)
-    html_block(issues_html(r, cards) + skills_html(r) + improve_html(cards))
+        show_compare(previous, view)
+    html_block(issues_html(view, cards) + skills_html(view) + improve_html(cards))
+    if set_aside:                                   # the team: stop an issue from counting, and see the score change
+        set_aside_controls(r, trainer=trainer, training=training)
     st.write("")
-    show_details(r)
-    show_download(slot, r, cards)
+    show_details(view)
+    show_download(slot, view, cards)
 
 
 def render_client(old, new, swapped=None):
@@ -2258,7 +2477,7 @@ def show_download(slot, r, cards, original=None):
     """'Download PDF' (a real PDF made from the report; with the `original` resume: the client comparison report).
     When the PDF cannot be made: a clear message and the HTML report instead, so the download never just fails."""
     cache = st.session_state.setdefault("pdf_cache", {})
-    doc = report_document(r, cards) if original is None else comparison_document(original, r)
+    doc = report_doc_of(r, cards, cache) if original is None else comparison_document(original, r)
     data, why = pdf_of(doc, cache)
     with slot.container():
         if data:

@@ -421,7 +421,7 @@ class TestCalibration(unittest.TestCase):
     TARGETS = {"testcvs/MohamedShokry-original.pdf": (65, 75),
                "CV4/jibran-original-cv.pdf": (50, 75),
                "CVS/profile-user-2UXAuWAmUaH2A5vU-1790959538885-ynuipc.pdf": (50, 70),
-               "CV4/Tareq Al Masri CV JN26.pdf": (0, 49.9)}
+               "CV4/Tareq Al Masri CV JN26.pdf": (0, 50.6)}
 
     def test_original_cvs(self):
         for p, (lo, hi) in self.TARGETS.items():

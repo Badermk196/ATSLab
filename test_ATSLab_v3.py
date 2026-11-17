@@ -77,6 +77,25 @@ class TestBugDetectors(unittest.TestCase):
         self.assertGreaterEqual(items, 8)
         self.assertFalse(L.detect_b2(d, ana)[0])
 
+    def test_one_skill_per_line_is_not_b2(self):
+        d = fake_doc("Aisha Noor\nTalent Acquisition Specialist\n"
+                     "aisha@mail.com | +971 50 123 4567 | Dubai, UAE\n"
+                     "SKILLS\nHeadhunting\nTalent screening\nATS management\n"
+                     "Workforce planning\nStakeholder management")
+        ana = L.analyse(d)
+        items, _ = L.skills_listed(ana)
+        self.assertGreaterEqual(items, 5)
+        self.assertFalse(L.detect_b2(d, ana)[0])
+
+    def test_category_only_skills_still_is_b2(self):
+        d = fake_doc("Aisha Noor\nTalent Acquisition Specialist\n"
+                     "aisha@mail.com | +971 50 123 4567 | Dubai, UAE\n"
+                     "SKILLS\nTechnical Skills\nSoft Skills")
+        ana = L.analyse(d)
+        items, _ = L.skills_listed(ana)
+        self.assertEqual(items, 0)
+        self.assertTrue(L.detect_b2(d, ana)[0])
+
     def test_spaced_name_only_says_name_only(self):
         """A wide font splits the strict reading only and the readable text is normal ("ALAN ABBAS"), so no card
         (5 Nov 2026). When the letters really are apart the card fires and says "name only"."""

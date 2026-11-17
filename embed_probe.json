@@ -3,5 +3,10 @@
   "ok": true,
   "why": "",
   "checked": "2026-10-23"
+ },
+ "3.12.4|AMD64|torch=2.14.1+cpu|sentence-transformers=6.1.0|transformers=5.10.1|numpy=2.4.6|tokenizers=0.22.2|safetensors=0.7.0": {
+  "ok": false,
+  "why": "OSError: [WinError 6] The handle is invalid",
+  "checked": "2026-11-10"
  }
 }

@@ -1,0 +1,95 @@
+{
+  "role": "Recruiter-",
+  "prompt_version": 2,
+  "model": "google/gemini-2.5-flash",
+  "created": "2026-11-10",
+  "temperature": 0,
+  "ai_runs": [
+    {
+      "required_skills": [
+        "Applicant Tracking Systems",
+        "Candidate Sourcing",
+        "Interviewing",
+        "Talent Acquisition",
+        "LinkedIn Recruiter",
+        "Recruitment Marketing",
+        "HR Software",
+        "Boolean Search",
+        "Offer Negotiation",
+        "Candidate Experience"
+      ],
+      "preferred_skills": [
+        "Onboarding",
+        "HR Compliance",
+        "Workday",
+        "Greenhouse",
+        "SuccessFactors",
+        "Diversity Recruiting",
+        "Employer Branding",
+        "HR Analytics"
+      ]
+    },
+    {
+      "required_skills": [
+        "Applicant Tracking Systems",
+        "Candidate Sourcing",
+        "Interviewing",
+        "Talent Acquisition",
+        "LinkedIn Recruiter",
+        "Recruitment Marketing",
+        "HR Software",
+        "Boolean Search",
+        "Offer Negotiation",
+        "Candidate Experience"
+      ],
+      "preferred_skills": [
+        "Onboarding",
+        "HR Compliance",
+        "Workday",
+        "Greenhouse",
+        "SuccessFactors",
+        "Diversity Recruiting",
+        "Employer Branding",
+        "HR Analytics"
+      ]
+    },
+    {
+      "required_skills": [
+        "Applicant Tracking Systems",
+        "Candidate Sourcing",
+        "Interviewing",
+        "Talent Acquisition",
+        "LinkedIn Recruiter",
+        "Recruitment Marketing",
+        "HR Software",
+        "Boolean Search",
+        "Offer Negotiation",
+        "Candidate Experience"
+      ],
+      "preferred_skills": [
+        "Onboarding",
+        "HR Compliance",
+        "Workday",
+        "Greenhouse",
+        "SuccessFactors",
+        "Diversity Recruiting",
+        "Employer Branding",
+        "HR Analytics"
+      ]
+    }
+  ],
+  "ai_info": [
+    {
+      "seniority": "mid-level",
+      "field": "human resources"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "human resources"
+    },
+    {
+      "seniority": "mid-level",
+      "field": "human resources"
+    }
+  ]
+}

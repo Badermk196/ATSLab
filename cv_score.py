@@ -283,8 +283,16 @@ def analyse_cv(doc):
         else:
             header.append(r)
     sections = L.synthesize_experience(sections)         # jobs under company names, no 'Experience' heading
-    exp_lines = [r["text"].strip() for s in sections if s["kind"] == "experience" for r in s["rows"]]
+    exp_lines, hidden_lines = [], set()
+    for s in sections:
+        if s["kind"] != "experience":
+            continue
+        start = len(exp_lines)
+        exp_lines += [r["text"].strip() for r in s["rows"]]
+        if s.get("hidden_jobs"):
+            hidden_lines.update(range(start, len(exp_lines)))
     parsed = L.parse_jobs(exp_lines)
+    parsed = [j for j in parsed if j["line"] not in hidden_lines or L._likely_job_row(exp_lines[j["line"]])]
     jobs, programs = [], []                          # a course / program under Experience is not a job: see
     for j in parsed:                                 # is_program_entry. It is kept out of every job check.
         (programs if is_program_entry(exp_lines[j["line"]: j["line"] + 2]) else jobs).append(j)
@@ -565,6 +573,7 @@ def content_checks(doc, ana, res, target, years=None, pages=None):
         ev += [x["text"] for x in L.section_rows(ana, "achievements")][:2]
     if bug["B13"]["found"]:
         ev += [t for t, _ in (doc.get("shared_text") or [])][:1]
+    ev = list(dict.fromkeys(x.strip() for x in ev if x and x.strip()))
     c["C6"] = {"score": max(0.0, 1 - penalty),
                "detail": f"{len(dupes)} repeated bullet(s); achievements repeat experience: "
                          f"{'yes' if bug['B9']['found'] else 'no'}; text shared with another CV: "
@@ -1181,9 +1190,9 @@ def standard_content_checks(doc, ana):
     head = headline_line(ana)
     named = next((r["text"].strip() for r in ana["header"][1:4]
                   if not L.CONTACT_LINE_RE.search(r["text"]) and 2 <= len(r["text"].split()) <= 20), None)
-    # a headline that names areas instead of a job title is only a small issue; no headline at all is an Important one
+    # A function-only headline is reported separately from a missing headline; scoring values stay unchanged.
     c["C15"] = {"score": 1.0 if head else FIELD_HEADLINE_SCORE if named else 0.0, "has_headline": bool(named),
-                "detail": head or (f"headline names areas, not a job title: {named}" if named
+                "detail": head or (f"headline names a function, not a specific target job title: {named}" if named
                                    else "no headline with a target title under the name"),
                 "evidence": [r["text"] for r in ana["header"][:3]]}
     # the same result repeated: 4+ times, or 3 times when one is in a highlight section (Career Impact, Achievements)
@@ -2497,9 +2506,8 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
         blockers["job_match"] = {"parts": {"job_match": job_match_part(res, ("F1", "M1"))}}
     fix_of = {i["id"]: i["_fix"] for i in issues}
 
-    def score_with(ids):
-        """The Resume Score with several issues fixed TOGETHER (not the sum of their points: parts overlap,
-        caps and the weakest part limit the total). For the report's 'can reach X by fixing N issues'."""
+    def fixed_state(ids):
+        """The fixes of several issues put together (parts overlap, so they cannot simply be added up)."""
         both = {"parts": {}, "cc": {}, "pc": {}}
         reads, jm, ai_gone = [set(), set(), set()], set(), set()
         for iid in ids:
@@ -2516,7 +2524,20 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
             both["parts"]["job_match"] = job_match_part(res, tuple(jm))
         if ai_gone:
             both["cc"]["C8"] = ai_check([g for n, g in enumerate(ai_content or [], 1) if n not in ai_gone])
-        return round(max(score, total_with(both)), 1)
+        return both
+
+    def parts_score_with(ids):
+        """(parts, Resume Score) with several issues fixed TOGETHER, from one computation, so a page that sets
+        issues aside shows a score and parts that always agree. -> ({part: 0-100}, score)"""
+        st = fixed_state(ids)
+        p, c2, s2 = parts_with(st)
+        total = total_from(p, c2, s2, limits, st.get("layout"), st.get("pages"))[0]
+        return {k: round(v, 1) for k, v in p.items()}, round(max(score, total), 1)
+
+    def score_with(ids):
+        """The Resume Score with several issues fixed TOGETHER (not the sum of their points: parts overlap,
+        caps and the weakest part limit the total). For the report's 'can reach X by fixing N issues'."""
+        return parts_score_with(ids)[1]
 
     for i in issues:
         fix = i.pop("_fix")
@@ -2535,6 +2556,7 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
     L.EMBED_OFF = embed_off
     if job_path and (safe or not L.embedder_ok()):
         run_notes.append(L.EMBED_NOTE)
+    costs = {i["id"]: round(i.get("_cost", 0.0), 3) for i in issues}   # kept: part_explain drops "_cost"
     explain = part_explain(parts, issues)
     pages_held = any("page limit" in g for g in gates)
     for i in issues:                  # 'if fixed' never more than what the issue costs its part (the 70 cap aside)
@@ -2546,7 +2568,8 @@ def _score_cv(cv_path, job_path=None, role=None, model=MODEL, doc=None, role_cac
                 i["points_after"] = round(min(i["points_after"], i["part_points"]), 1)
     rank = {"Critical": 0, "Major": 1, "Minor": 2}
     issues.sort(key=lambda i: (-i["points"], rank[i["severity"]]))
-    return {"version": SCORE_VERSION, "part_explain": explain, "_score_with": score_with, "notes": run_notes, "two_versions": two,
+    return {"version": SCORE_VERSION, "part_explain": explain, "_score_with": score_with,
+            "_parts_with": parts_score_with, "_part_costs": costs, "notes": run_notes, "two_versions": two,
             "cv": os.path.basename(cv_path), "mode": "job" if job_path else "role", "target": target,
             "score": round(score, 1), "label": label_for(score, parts, issues), "gates": gates,
             "parts": {k: round(v, 1) for k, v in parts.items()},

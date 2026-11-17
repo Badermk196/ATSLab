@@ -93,6 +93,15 @@ ADMIN_TEXT = {
     "confirm_text": "This removes the report{s} and the resume file{s} for good. It cannot be undone.",
     "confirm_yes": "Delete for good", "cancel": "Cancel",
     "deleted": "{n} record{s} deleted.",
+    # clearing a whole list (History, Needs review, Activity log)
+    "clear_history": "Clear history",
+    "clear_history_ask": "Remove every check, its report and its kept resume file? The Activity log and the settings stay.",
+    "clear_history_yes": "Clear the history",
+    "clear_history_done": "History cleared: {checks} checks and {files} resume files removed. The settings stay.",
+    "clear_review": "Mark them all as reviewed",
+    "clear_review_ask": "Mark all {n} flagged resumes as reviewed? They leave this list; their reports stay in History.",
+    "clear_review_yes": "Mark them reviewed",
+    "clear_review_done": "{n} resumes marked as reviewed by {who}.",
     "no_history": "No resume has been checked yet.",
     "no_match": "No checks match these filters.",
     "open": "Open report", "back": "Back to the list",
@@ -113,6 +122,8 @@ ADMIN_TEXT = {
     "settings_title": "Settings", "settings_sub": "Changes apply to the team dashboard and the user page.",
     "rules_title": "Needs review rules", "rules_sub": "A check is flagged for the team when:",
     "links_title": "User page buttons", "links_sub": "Where the buttons on the user page go.",
+    "second_title": "Second opinions", "second_sub": "Two extra ATS checkers beside the Lab score. "
+                    "They are for comparison only and never change the score.",
     "server_title": "About this server",
     "server": ["Admin accounts: {admins}", "AI key set: {key}", "Data folder: {folder}",
                "Checks in the history: {checks}", "Version: ATS Lab v{version}"],
@@ -127,6 +138,13 @@ ADMIN_TEXT = {
     "log_search": "Search by admin, candidate or action",
     "col_when": "When", "col_admin": "Admin", "col_action": "Action", "col_details": "Details",
     "no_log": "Nothing has happened yet.", "no_log_match": "No actions match these filters.",
+    "clear_log": "Clear the activity log",
+    "clear_log_ask": "Remove every line of the Activity log? History, Needs review and the settings stay.",
+    "clear_log_yes": "Clear the log",
+    "clear_log_done": "{n} activity lines removed.",
+    # what the page shows while a check runs
+    "checking_title": "Checking the resume...",
+    "checking_sub": "Reading the pages, the sections and (with a job) the job description. A few seconds.",
 }
 
 # Activity log: kind -> (filter chip, action label); the chips filter by kind
@@ -137,14 +155,19 @@ LOG_KINDS = {
     "delete": ("Deletions", "Deleted record"),
     "export": ("Exports", "Exported CSV"),
     "sign_in": ("Sign-ins", "Signed in"),
+    "training": ("Teaching", "Set an issue aside"),
 }
 LOG_DETAILS = {
     "check": "{job} · score {score} · {label}",
     "review": "Note: {note}", "review_no_note": "No note",
+    "review_bulk": "{n} resume{s} marked reviewed (no note)",
     "settings": "{name}: {old} → {new}", "settings_reset": "Back to the server settings",
     "delete": "Report and file removed",
+    "clear_history": "Cleared the history: {checks} checks and {files} files removed",
+    "clear_log": "Cleared the activity log: {n} lines removed",
     "export": "{what} · {n} record{s}", "export_history": "History", "export_log": "Activity log",
     "sign_in": "Admin page",
+    "training": "Set aside ({reason})",
 }
 
 # Settings: key -> (title, description). The order here is the order on the Settings page.
@@ -161,8 +184,45 @@ SETTINGS_TEXT = {
     "site_url": ("“Go to 1000Jobs” link", ""),
     "collect_leads": ("Ask for name and email first",
                       "On the user page, people enter their name and email before they see the result."),
+    "second_matcher": ("Resume Matcher card",
+                       "Shows the second opinion card on the Admin page. It runs only when the team presses it."),
+    "second_checker2": ("ATS Checker 2 card",
+                        "Shows the second opinion card on the Admin page. It runs only when the team presses it."),
 }
 DAYS = "{n} days"
+
+# Second opinion (Admin page only): two extra ATS checkers beside the Lab score. They read the Lab's own
+# numbers and never change them. Both run on this device: no resume leaves the computer.
+SECOND_TEXT = {
+    "title": "Second opinion", "sub": "2 extra ATS checkers",
+    "head_all": "Both checkers agree with the Lab",
+    "head_some": "{n} of {total} checkers agree with the Lab",
+    "head_none": "No checker agrees with the Lab",
+    "note": "Second opinions are for comparison only and don't change the ATS Lab score.",
+    "empty": "Not checked yet",
+    "run": "Check with {name}",
+    "again": "Check again",
+    "checking": "Checking...",
+    "checked": "Checked {when}",
+    "needs_job": "Needs a job description",
+    "needs_job_hint": "Check this resume with a job description to use {name}.",
+    "failed": "Not available right now",
+    "failed_hint": "The checker could not answer. The ATS Lab report is not affected.",
+    "off": "Switched off in Settings",
+    "off_hint": "Turn {name} on in Settings to use it.",
+    "vs_job": "vs Lab Job match {n}", "vs_score": "vs Lab score {n}",
+    "keywords": "Keyword match", "keywords_line": "{n} of {total} keywords, {pct}%",
+    "missing": "Top missing keywords: {list}",
+    # what each card read, so the number is never a mystery
+    "read_job": "Read: the job description's own words.",
+    "read_role": "Read: the skills a {role} role is expected to have (no job description was given).",
+    "read_checks": "Read: this resume itself - {passed} of {total} checks passed.",
+    "weakest": "Weakest: {list}",
+    "no_reference": "no Job match in a general check",
+    "skills": "Skills match",
+    "skills_line": "{n} of {total} skills, {pct}%",
+    "missing_skills": "Missing skills: {list}",
+}
 
 # the reasons a check needs review (also the rule names in the "Needs review" subtitle)
 REVIEW_TEXT = {

@@ -64,7 +64,7 @@ def parts_html(r):
 def score_card_html(r, cards):
     s = D.report_summary(r, cards)
     tone = UI.tone_of(r["label"])
-    reach = USER_TEXT["reach"].format(after=D.fmt(s["after"])) if s["n_fix"] and s["after"] > s["now"] \
+    reach = USER_TEXT["reach"].format(after=D.fmt_score(s["after"])) if s["n_fix"] and s["after"] > s["now"] \
         else USER_TEXT["reach_none"]
     job = (f'<div class="job">{USER_TEXT["checked_job"].format(target=UI.esc(r["target"]))}</div>'
            if r["mode"] == "job" else "")

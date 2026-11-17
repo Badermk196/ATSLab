@@ -1,0 +1,68 @@
+# 1000Jobs ATS Lab - Manus Cloud Computer, HTTPS mode (Caddy + a free sslip.io name)
+#
+# sslip.io is a free public DNS service: 34-12-56-78.sslip.io always resolves to 34.12.56.78.
+# So you get a real domain name and a real Let's Encrypt certificate without buying a domain.
+# Caddy asks for the certificate on its own the first time it starts.
+#
+#   cd /opt/atslab/deploy/cloud
+#   docker compose -f docker-compose.https.yml up -d --build
+#
+# Requirements: ports 80 and 443 open in UFW, and DOMAIN in .env set to <ip-with-dashes>.sslip.io
+# Example: public IP 34.12.56.78  ->  DOMAIN=34-12-56-78.sslip.io
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: atslab:cloud
+    container_name: atslab-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ATSLAB_DATA_DIR: /data
+      TZ: Asia/Dubai
+    expose:
+      - "8501"
+    volumes:
+      - atslab-data:/data
+    networks:
+      - atslab
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2
+    container_name: atslab-web
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      EMAIL: ${EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - atslab
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  atslab:
+
+volumes:
+  atslab-data:
+  caddy-data:
+  caddy-config:

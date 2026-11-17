@@ -47,3 +47,5 @@ golden_candidates.json
 riyaj-portfolio/
 # the Manus session folder
 .manus/
+
+deploy/cloud/atslab-deploy.tar.gz

@@ -103,7 +103,7 @@ class TestJobTitleField(unittest.TestCase):
         sentence = re.search(r'<div class="plain">(.*?)</div>', doc, re.S).group(1)
         self.assertEqual(sentence, "This resume scored %s out of 100: the score shows how easily an ATS can read this "
                                    "resume, how well it meets the 1000Jobs standard, and how well it matches this job."
-                         % D.fmt(r["score"]))
+                         % D.fmt_score(r["score"]))
         plain = D.run_check(T.cv_bytes(), "neda.pdf", False, "", self.cache, self.cache)
         self.assertNotIn("matches this job", re.search(r'<div class="plain">(.*?)</div>',
                                                        D.report_document(plain), re.S).group(1))

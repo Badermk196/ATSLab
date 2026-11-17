@@ -17,12 +17,15 @@ Every text is in lab_text.py, the look in lab_ui.py.
 
 import csv
 import datetime as dt
+import hashlib
 import io
+import secrets
 
 import streamlit as st
 
 import dashboard as D
 import lab_pages as P
+import lab_second as SO
 import lab_settings as S
 import lab_store as H
 import lab_text as T
@@ -62,6 +65,22 @@ def day_of(text):
         return dt.date.fromisoformat((text or "")[:10])
     except ValueError:
         return None
+
+
+def ago(text):
+    """When something was checked, in plain words: 'just now' / '5 min ago' / '2 h ago' / 'Oct 29, 00:47'."""
+    try:
+        t = dt.datetime.strptime((text or "")[:19], H.TIME_FORMAT)
+    except (TypeError, ValueError):
+        return text or ""
+    secs = (H.now() - t).total_seconds()
+    if secs < 60:
+        return "just now"
+    if secs < 3600:
+        return f"{int(secs // 60)} min ago"
+    if secs < 86400:
+        return f"{int(secs // 3600)} h ago"
+    return when(text)
 
 
 def candidate(r):
@@ -158,13 +177,42 @@ def login_card():
                 who = sign_in(name, password, ip)
                 if who:
                     st.session_state["admin"] = who
+                    remember_me(who)                 # no password again on this browser (Sign out ends it)
                     store().log(who, "sign_in", T.LOG_DETAILS["sign_in"])
                     st.rerun()
                 st.error(ADMIN_TEXT["locked"] if store().login_wait(guard_keys(name, ip)) > 0 else ADMIN_TEXT["wrong"])
 
 
+def remember_me(who):
+    """Stay signed in on this browser: a random token in its cookie and in the store (never a password)."""
+    token = secrets.token_hex(16)
+    store().remember_admin(token, who)
+    st.session_state["admin_token"] = token
+    P.set_admin_token(token)
+    return token
+
+
+def restore_login():
+    """-> the admin's name when this browser signed in before and did not sign out, else None."""
+    token = st.session_state.get("admin_token") or P.admin_token()
+    if not token:
+        return None
+    who = store().admin_of_token(token)
+    if who:
+        st.session_state["admin"] = who
+        st.session_state["admin_token"] = token
+        return who
+    st.session_state.pop("admin_token", None)        # an old token (or a signed-out one): ask again
+    P.clear_admin_token()
+    return None
+
+
 def sign_out():
-    for k in ("admin", "result", "open_check", "confirm_delete", "admin_view"):
+    token = st.session_state.pop("admin_token", None) or P.admin_token()
+    if token:
+        store().forget_token(token)
+        P.clear_admin_token()
+    for k in ("admin", "result", "open_check", "confirm_delete", "admin_view", "upload_round"):
         st.session_state.pop(k, None)
 
 
@@ -181,7 +229,8 @@ def nav_css(view, n_review):
              f"padding: 0 6px; border-radius: 11px; background: var(--a-badge); color: #fff; font-size: .75rem; "
              f"font-weight: 700; display: flex; align-items: center; justify-content: center;}}") if n_review else ""
     hidden = hidden_label(".st-key-sign_out") + hidden_label("[class*='st-key-hopen_']")
-    return on + badge + hidden
+    gap = ".st-key-nav_check {margin-top: 12px;}"      # the first item sits a little away from "WORKSPACE"
+    return on + badge + gap + hidden
 
 
 def sidebar(who, view):
@@ -215,7 +264,7 @@ def saver(who):
             r = saved["res"]
             store().log(who, "check", rec["candidate"] or rec["file_name"],
                         T.LOG_DETAILS["check"].format(job=rec["job_title"] or ADMIN_TEXT["general"],
-                                                      score=round(r["score"]), label=r["label"]))
+                                                      score=int(float(r["score"] or 0)), label=r["label"]))
             st.toast(ADMIN_TEXT["saved"])
         except Exception as e:                      # the check itself is never lost because of the history
             st.warning(ADMIN_TEXT["not_saved"].format(why=type(e).__name__))
@@ -352,6 +401,13 @@ def run(inputs, who):
         st.rerun()
 
 
+def checking_card():
+    """While a check runs: one calm card instead of the upload form, so the page never looks half-built."""
+    with st.container(key="card-check"):
+        st.markdown(f'<div class="a-h3">{UI.esc(ADMIN_TEXT["checking_title"])}</div>'
+                    f'<p class="a-sub">{UI.esc(ADMIN_TEXT["checking_sub"])}</p>', unsafe_allow_html=True)
+
+
 def side_panels():
     with st.container(key="card-shows"):
         items = "".join(f'<li><span class="k">{n}</span><span>{UI.esc(t)}</span></li>'
@@ -383,19 +439,190 @@ def again_card(mode, saved, who):
             run(dict(saved["inputs"], with_job=mode == D.WITH_JOB, text=text, job_title=title), who)
 
 
+# ---------------------------------------------------------------------------
+# Second opinion (Admin page only): two extra ATS checkers beside the Lab score
+# ---------------------------------------------------------------------------
+# They read the Lab's own numbers and never change them (lab_second.py). Each card is empty until the team
+# presses its button, and both checkers run on this device: no resume leaves the computer.
+SECOND_TEXT = T.SECOND_TEXT
+SECOND_SETTINGS = {"matcher": "second_matcher", "checker2": "second_checker2"}
+SECOND_TONE = {"Agrees": "a-ok", "Higher": "a-info", "Lower": "a-warn"}
+
+
+def second_on(checker):
+    """Whether this checker is switched on in Settings."""
+    return bool(P.setting(SECOND_SETTINGS[checker]))
+
+
+def second_key(saved, checker):
+    """A key for one resume + job + checker: from the resume's bytes and the job text, so a different file or a
+    different job description never reuses an answer (a general check and a check with a job differ too)."""
+    inputs = saved.get("inputs") or {}
+    seed = (inputs.get("pdf") or b"") + b"\n" + (inputs.get("text") or "").encode("utf-8")
+    return f"so_{checker}_{hashlib.md5(seed).hexdigest()[:10]}"
+
+
+def second_run(saved, checker, job_text, key):
+    """Run one checker now (the team pressed the button) and keep its answer for this resume."""
+    with st.spinner(SECOND_TEXT["checking"]):
+        out = SO.run(checker, saved.get("res") or {}, job_text,
+                     {"matcher": second_on("matcher"), "checker2": second_on("checker2")})
+        out = SO.finish(checker, saved.get("res") or {}, out)
+        out["checked_at"] = H.now().strftime(H.TIME_FORMAT)
+    st.session_state[key] = out
+    st.rerun()
+
+
+def second_answer(saved, checker, job_text, key):
+    """The stored answer of one checker, running it when the team just pressed the button. None = not checked yet."""
+    answer = st.session_state.get(key)
+    if answer is None:
+        return None
+    if answer.get("state") == SO.CHECKING:          # the button was pressed on the run before this one
+        second_run(saved, checker, job_text, key)   # (draws the spinner, keeps the answer, redraws)
+    return answer
+
+
+def read_line(checker, answer):
+    """What this card actually read, in one line, so its number is never a mystery."""
+    if checker == "matcher":
+        if answer.get("source") == "role":          # a general check: the skills of the resume's own role
+            return SECOND_TEXT["read_role"].format(role=answer.get("role") or "")
+        return SECOND_TEXT["read_job"]
+    checks = answer.get("checks") or []
+    passed = sum(1 for c in checks if c.get("passed"))
+    return SECOND_TEXT["read_checks"].format(passed=passed, total=len(checks)) if checks else ""
+
+
+def second_card(saved, checker, job_text):
+    """One card: the checker's number, its label, the difference from the Lab's number, and its own button."""
+    info = SO.CHECKERS[checker]
+    name, key = info["name"], second_key(saved, checker)
+    answer = second_answer(saved, checker, job_text, key)
+    with st.container(key=f"card-so-{checker}"):
+        st.markdown(f'<div class="so-name">{UI.esc(name)}</div>'
+                    f'<div class="so-sub2">{UI.esc(info["sub"])}</div>', unsafe_allow_html=True)
+        if not second_on(checker):
+            st.markdown(f'<div class="so-state">{UI.esc(SECOND_TEXT["off"])}</div>'
+                        f'<div class="so-note">{UI.esc(SECOND_TEXT["off_hint"].format(name=name))}</div>',
+                        unsafe_allow_html=True)
+            return
+        if answer is None:                          # nothing checked yet: the card only offers its button
+            st.markdown(f'<div class="so-state">{UI.esc(SECOND_TEXT["empty"])}</div>', unsafe_allow_html=True)
+            if st.button(SECOND_TEXT["run"].format(name=name), key=f"so_run_{checker}_{key}", width="stretch"):
+                st.session_state[key] = {"state": SO.CHECKING}
+                st.rerun()
+            return
+        state = answer.get("state")
+        if state in (SO.CHECKING, SO.NEEDS_JOB, SO.FAILED):
+            st.markdown(f'<div class="so-state">{UI.esc(SECOND_TEXT[state])}</div>'
+                        + (f'<div class="so-note">{UI.esc(SECOND_TEXT["needs_job_hint"].format(name=name))}</div>'
+                           if state == SO.NEEDS_JOB else
+                           f'<div class="so-note">{UI.esc(SECOND_TEXT["failed_hint"])}</div>'
+                           if state == SO.FAILED else ""), unsafe_allow_html=True)
+            if state != SO.CHECKING and st.button(SECOND_TEXT["again"], key=f"so_again_{checker}_{key}",
+                                                  width="stretch"):
+                st.session_state[key] = {"state": SO.CHECKING}
+                st.rerun()
+            return
+        general = answer.get("source") == "role"        # a general check: the Lab has no Job match to compare with
+        ref = (SECOND_TEXT["no_reference"] if general and info["compares"] == "job_match" else
+               SECOND_TEXT["vs_job" if info["compares"] == "job_match" else "vs_score"].format(
+                   n=answer.get("reference")))
+        tag = (f'<span class="a-tag {SECOND_TONE.get(answer.get("word"), "a-grey")}">'
+               f'{UI.esc(answer.get("difference") or "")}</span>') if answer.get("word") else ""
+        st.markdown(
+            f'<div class="so-top"><div><span class="so-big">{UI.esc(answer.get("score"))}</span>'
+            f'<span class="so-of">/100</span><div class="so-lab">{UI.esc(SO.label_for(answer.get("score")))}</div></div>'
+            f'<div>{tag}<div class="so-lab" style="text-align:right">{UI.esc(ref)}</div></div></div>',
+            unsafe_allow_html=True)
+        st.markdown(f'<div class="so-note">{UI.esc(read_line(checker, answer))}</div>', unsafe_allow_html=True)
+        if checker == "matcher":                    # the keyword match, and what a keyword ATS would miss
+            pct = answer.get("pct") or 0
+            with_job = answer.get("source") != "role"
+            st.markdown(f'<div class="so-kw"><b>{UI.esc(SECOND_TEXT["keywords" if with_job else "skills"])}</b>'
+                        f'<span>{UI.esc(SECOND_TEXT["keywords_line" if with_job else "skills_line"].format(
+                            n=answer.get("n_matched"), total=answer.get("total"), pct=pct))}'
+                        f'</span></div><div class="so-bar"><i style="width:{max(2, min(100, pct))}%"></i></div>',
+                        unsafe_allow_html=True)
+            if not answer.get("agree") and answer.get("missing"):
+                text = SECOND_TEXT["missing" if with_job else "missing_skills"]
+                st.markdown(f'<div class="so-note">'
+                            f'{UI.esc(text.format(list=", ".join(SO.top_missing(answer))))}</div>',
+                            unsafe_allow_html=True)
+        else:                                       # ATS Checker 2: say which of its own checks failed
+            weak = [c["name"] for c in (answer.get("checks") or []) if not c.get("passed")]
+            if weak:
+                st.markdown(f'<div class="so-note">{UI.esc(SECOND_TEXT["weakest"].format(list=", ".join(weak[:4])))}'
+                            f'</div>', unsafe_allow_html=True)
+        a, b = st.columns([2, 1], vertical_alignment="center")
+        a.markdown(f'<div class="so-when">{UI.esc(SECOND_TEXT["checked"].format(
+            when=ago(answer.get("checked_at"))))}</div>', unsafe_allow_html=True)
+        if b.button(SECOND_TEXT["again"], key=f"so_again_{checker}_{key}", width="stretch"):
+            st.session_state[key] = {"state": SO.CHECKING}
+            st.rerun()
+
+
+def second_opinion(saved):
+    """The whole section: its title, the two cards, and the note that it never changes the Lab score."""
+    job_text = (saved.get("inputs") or {}).get("text") or ""
+    answers = {c: st.session_state.get(second_key(saved, c)) for c in SO.ORDER}
+    head = SO.headline(answers)
+    st.markdown(
+        f'<div class="so-head"><div><span class="so-title"><span class="so-num">2</span>'
+        f'{UI.esc(SECOND_TEXT["title"])}</span><span class="so-sub">{UI.esc(SECOND_TEXT["sub"])}</span></div>'
+        + (f'<div class="so-head-right{" grey" if not head.startswith("Both") else ""}">{UI.esc(head)}</div>'
+           if head else "") + "</div>", unsafe_allow_html=True)
+    cols = st.columns(2, gap="medium")
+    for col, checker in zip(cols, SO.ORDER):
+        with col:
+            second_card(saved, checker, job_text)
+    st.markdown(f'<div class="so-section-note">{UI.esc(SECOND_TEXT["note"])}</div>', unsafe_allow_html=True)
+
+
+def training_hooks(who):
+    """Returns (trainer, training): the team's X on an issue card saves WHY the issue was set aside
+    (the Lab's teaching signal), and the log is read back for the table and the CSV on the report."""
+    def trainer(r, card, reason, note, evidence):
+        store().add_training(who, r.get("_uid") or "", r.get("cv") or "", r.get("target") or "",
+                             r.get("score"), card, reason, note, evidence)
+        store().log(who, "training", card.get("name") or "",
+                    T.LOG_DETAILS["training"].format(reason=D.TRAIN_REASONS.get(reason, reason)))
+
+    def training():
+        return store().training()
+
+    return trainer, training
+
+
 def check_view(who):
+    train, training = training_hooks(who)
     head, right = st.columns([3, 1.6], vertical_alignment="center")
     head.markdown(UI.page_title(ADMIN_TEXT["check_title"], ADMIN_TEXT["check_sub"]), unsafe_allow_html=True)
     with right:
         mode = mode_switch()
     saved = D.current_result()
     if saved is None:
-        main, side = st.columns([2.3, 1], gap="medium")
+        pending = st.session_state.get("pending_check")       # the "Run check" press: a calm page, then the check
+        main, side = st.columns([2.3, 1], gap="medium")        # the same shape as the form: nothing moves on screen
+        if pending is not None:
+            with main:
+                checking_card()
+            with side:
+                side_panels()             # the two side cards stay where they are while the check works
+            if not st.session_state.pop("pending_ready", False):
+                st.session_state["pending_ready"] = True       # one quick run with the calm card on screen only:
+                st.rerun()                                     # the check then starts with no form left behind it
+            st.session_state.pop("pending_check", None)
+            run(pending, who)
+            return
         with main:
             with st.container(key="card-check"):
                 inputs = check_form(mode)
                 if inputs is not None:
-                    run(inputs, who)
+                    st.session_state["pending_check"] = inputs    # the next run draws the clean card and checks
+                    st.session_state.pop("pending_ready", None)    # ... after one run that shows only that card
+                    st.rerun()
         with side:
             side_panels()
         return
@@ -405,7 +632,10 @@ def check_view(who):
     if (mode == D.WITH_JOB) != bool(saved["with_job"]):
         again_card(mode, saved, who)
     D.render(saved["res"], saved["with_job"], saved["prev"],
-             client=bool((saved.get("inputs") or {}).get("client")), swapped=saved.get("swap"))
+             client=bool((saved.get("inputs") or {}).get("client")), swapped=saved.get("swap"),
+             after_score=lambda: second_opinion(saved),       # the second opinion, under the Lab score
+             set_aside=True,                                  # team only: X sets an issue aside and the score changes
+             trainer=train, training=training)                # ... and teaches the Lab WHY (the teaching log)
 
 
 # ---------------------------------------------------------------------------
@@ -437,7 +667,7 @@ def history_csv(rows):
               "Reviewed by", "Reviewed at", "Review note", "Lead name", "Lead email"]
     return csv_bytes(header, [[r["created_at"], r.get("candidate"), r.get("file_name"), source_of(r),
                                "With job" if r.get("with_job") else "Without job", r.get("job_title"),
-                               round(r["score"] or 0), r.get("label"), "; ".join(r["review_reasons"]),
+                               int(float(r["score"] or 0)), r.get("label"), "; ".join(r["review_reasons"]),
                                r.get("reviewed_by"), r.get("reviewed_at"), r.get("review_note"), r.get("lead_name"),
                                r.get("lead_email")] for r in rows])
 
@@ -472,6 +702,58 @@ def confirm_box(who):
         a, b, _ = st.columns([1.3, 1, 3])
         a.button(ADMIN_TEXT["confirm_yes"], type="primary", key="confirm_yes", on_click=delete_records, args=(ids, who))
         b.button(ADMIN_TEXT["cancel"], key="confirm_no", on_click=lambda: st.session_state.pop("confirm_delete", None))
+
+
+def clear_history(who):
+    """A fresh History and Needs review: every check goes, with its report and its kept resume file. The settings and
+    the Activity log stay, and the clearing itself is written to the log."""
+    gone = store().clear_checks()
+    store().log(who, "delete", ADMIN_TEXT["clear_history"],
+                T.LOG_DETAILS["clear_history"].format(checks=gone["checks"], files=gone["files"]))
+    st.session_state["deleted_note"] = ADMIN_TEXT["clear_history_done"].format(checks=gone["checks"],
+                                                                              files=gone["files"])
+    for k in ("open_check", "confirm_delete", "hist_page"):
+        st.session_state.pop(k, None)
+    st.rerun()                                   # the list, the cards and the filters all start fresh
+
+
+def clear_activity(who):
+    """A fresh Activity log (the clearing itself is the first line of the new one)."""
+    n = store().clear_log()
+    store().log(who, "delete", ADMIN_TEXT["clear_log"], T.LOG_DETAILS["clear_log"].format(n=n))
+    st.session_state["log_note"] = ADMIN_TEXT["clear_log_done"].format(n=n)
+    st.rerun()
+
+
+def mark_all_reviewed(who):
+    """Every flagged resume leaves the list, marked with who did it. The reports stay in History."""
+    rows = store().needs_review(P.review_rules())
+    for r in rows:
+        store().mark_reviewed(r["id"], who, "")
+    store().log(who, "review", ADMIN_TEXT["clear_review"],
+                T.LOG_DETAILS["review_bulk"].format(n=len(rows), s=T.plural(len(rows))))
+    st.session_state["review_note"] = ADMIN_TEXT["clear_review_done"].format(n=len(rows), who=who)
+    st.rerun()
+
+
+def clear_button(key, label, icon=":material/delete_sweep:"):
+    """The "Clear" button of a list: it only asks (the confirm card does the clearing, never one click)."""
+    if st.button(label, key=f"clear_{key}", icon=icon, type="tertiary", width="stretch"):
+        st.session_state[f"clear_ask_{key}"] = True
+        st.rerun()
+
+
+def clear_confirm(key, question, confirm_label, do):
+    """The question a "Clear" button asks, full width: `do()` clears the list (and redraws the page)."""
+    if not st.session_state.get(f"clear_ask_{key}"):
+        return
+    with st.container(key=f"card-clear-{key}"):
+        st.markdown(f'<div class="a-h3">{UI.esc(question)}</div>', unsafe_allow_html=True)
+        a, b, _ = st.columns([1.6, 1, 3], vertical_alignment="center")
+        a.button(confirm_label, type="primary", key=f"clear_yes_{key}", width="stretch",
+                 on_click=lambda: (st.session_state.pop(f"clear_ask_{key}", None), do()))
+        b.button(ADMIN_TEXT["cancel"], key=f"clear_no_{key}", width="stretch",
+                 on_click=lambda: st.session_state.pop(f"clear_ask_{key}", None))
 
 
 def review_cell(r):
@@ -514,11 +796,18 @@ def history_view(who):
         return report_page(st.session_state["open_check"], who)
     head, right = st.columns([3, 1], vertical_alignment="center")
     head.markdown(UI.page_title(ADMIN_TEXT["history_title"], ADMIN_TEXT["history_sub"]), unsafe_allow_html=True)
-    right.button(ADMIN_TEXT["new_check_short"], icon=":material/add:",
-                 type="primary", key="hist_new", on_click=lambda: (go("check"), D.start_new()))
+    with right:
+        st.button(ADMIN_TEXT["new_check_short"], icon=":material/add:", type="primary", key="hist_new",
+                  on_click=lambda: (go("check"), D.start_new()), width="stretch")
     rows = store().history(rules=P.review_rules())
+    if rows:
+        a, _b = st.columns([1, 4])
+        with a:
+            clear_button("history", ADMIN_TEXT["clear_history"])
+        clear_confirm("history", ADMIN_TEXT["clear_history_ask"], ADMIN_TEXT["clear_history_yes"],
+                      lambda: clear_history(who))
     n_user = sum(r["checked_by"] == H.USER for r in rows)
-    avg = round(sum(r["score"] or 0 for r in rows) / len(rows)) if rows else 0
+    avg = round(sum(r["score"] or 0 for r in rows) / len(rows)) if rows else 0   # a whole number already
     n_review = sum(bool(r["review_reasons"]) and not r["reviewed_by"] for r in rows)
     st.markdown(UI.stat_cards([(ADMIN_TEXT["stat_checks"], len(rows), ""), (ADMIN_TEXT["stat_avg"], avg, ""),
                                (ADMIN_TEXT["stat_user"], n_user, ""), (ADMIN_TEXT["stat_review"], n_review, "warn")]),
@@ -691,10 +980,17 @@ def review_card(r, who):
 
 def review_view(who):
     rules = P.review_rules()
-    st.markdown(UI.page_title(ADMIN_TEXT["review_title"], ADMIN_TEXT["review_sub"].format(rules=rules_text(rules))),
-                unsafe_allow_html=True)
-    st.write("")
     rows = store().needs_review(rules)
+    head, right = st.columns([3, 1], vertical_alignment="center")
+    head.markdown(UI.page_title(ADMIN_TEXT["review_title"],
+                                ADMIN_TEXT["review_sub"].format(rules=rules_text(rules))), unsafe_allow_html=True)
+    if rows:
+        with right:
+            clear_button("review", ADMIN_TEXT["clear_review"], icon=":material/done_all:")
+        clear_confirm("review", ADMIN_TEXT["clear_review_ask"].format(n=len(rows)),
+                      ADMIN_TEXT["clear_review_yes"], lambda: mark_all_reviewed(who))
+    if st.session_state.get("review_note"):
+        st.success(st.session_state.pop("review_note"))
     if not rows:
         with st.container(key="card-noreview"):
             st.markdown(UI.empty("&#10003;", ADMIN_TEXT["no_review"], ADMIN_TEXT["no_review_sub"]),
@@ -776,6 +1072,11 @@ def settings_view(who):
                 values["review_score"] = setting_row("review_score", "number", saved)
                 values["review_critical"] = setting_row("review_critical", "toggle", saved)
                 values["review_contact"] = setting_row("review_contact", "toggle", saved)
+            with st.container(key="card-set-second"):
+                st.markdown(f'<div class="a-h3">{ADMIN_TEXT["second_title"]}</div><p class="a-sub">'
+                            f'{ADMIN_TEXT["second_sub"]}</p>', unsafe_allow_html=True)
+                values["second_matcher"] = setting_row("second_matcher", "toggle", saved)
+                values["second_checker2"] = setting_row("second_checker2", "toggle", saved)
             with st.container(key="card-set-links"):
                 st.markdown(f'<div class="a-h3">{ADMIN_TEXT["links_title"]}</div><p class="a-sub">'
                             f'{ADMIN_TEXT["links_sub"]}</p>', unsafe_allow_html=True)
@@ -869,6 +1170,13 @@ def log_view(who):
         with c:
             kind = st.pills("Action", ("all",) + LOG_CHIPS, key="log_kind", label_visibility="collapsed",
                             format_func=lambda k: ADMIN_TEXT["all"] if k == "all" else T.LOG_KINDS[k][0], default="all")
+        if st.session_state.get("log_note"):
+            st.success(st.session_state.pop("log_note"))
+        left, _r = st.columns([1, 4])
+        with left:
+            clear_button("log", ADMIN_TEXT["clear_log"])
+        clear_confirm("log", ADMIN_TEXT["clear_log_ask"], ADMIN_TEXT["clear_log_yes"],
+                      lambda: clear_activity(who))
         shown = filter_log(rows, q, None if kind in (None, "all") else kind, tuple(dates or ()))
         right.download_button(ADMIN_TEXT["export"], log_csv(shown), icon=":material/download:", key="log_export",
                               file_name=f"1000Jobs ATS Lab activity {today}.csv", mime="text/csv", width="stretch",
@@ -885,7 +1193,7 @@ def log_view(who):
 # The page
 # ---------------------------------------------------------------------------
 def admin():
-    who = st.session_state.get("admin")
+    who = st.session_state.get("admin") or restore_login()    # a browser that signed in before stays signed in
     if who and who not in S.admin_accounts():       # the account was removed: sign in again
         sign_out()
         who = None

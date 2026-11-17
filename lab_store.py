@@ -80,8 +80,30 @@ CREATE TABLE IF NOT EXISTS login_guard (
   tries INTEGER NOT NULL DEFAULT 0,
   locked_until REAL NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token TEXT PRIMARY KEY,
+  admin TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  seen_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS training (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,
+  admin TEXT NOT NULL,
+  check_id INTEGER,
+  cv TEXT,
+  job_title TEXT,
+  score REAL,
+  issue_id TEXT,
+  issue_name TEXT,
+  card TEXT,
+  reason TEXT,
+  note TEXT,
+  evidence TEXT
+);
 """
 KEEP_COUNT_DAYS = 7               # daily check counts older than this are deleted
+SESSION_DAYS = 30                 # an admin who stays signed in: the cookie lasts this long without a visit
 NEW_COLUMNS = {"review_note": "TEXT", "review_facts": "TEXT"}     # added to a database made by v1.3 or older
 
 
@@ -308,6 +330,42 @@ class Store:
         """Every logged action, newest first."""
         return self._all("SELECT * FROM admin_log ORDER BY at DESC, id DESC LIMIT ?", (limit,))
 
+    # --- what the team teaches the Lab (the X on an issue card) ----------------------------------------------
+    def add_training(self, admin, check_id, cv, job_title, score, card, reason, note="", evidence="", when=None):
+        """One issue the team set aside, with the reason. This is the Lab's teaching record: the same issue
+        coming back on other resumes is what shows a check needs fixing. -> the new row id."""
+        ids = [i.get("id") for i in (card.get("issues") or []) if i.get("id")]
+        self._run("INSERT INTO training (at, admin, check_id, cv, job_title, score, issue_id, issue_name, card, "
+                  "reason, note, evidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ((when or now()).strftime(TIME_FORMAT), admin or "", check_id, cv or "", job_title or "", score,
+                   ",".join(ids), card.get("name") or "", card.get("key") or "", reason or "",
+                   " ".join((note or "").split()), " ".join((evidence or "").split())[:500]))
+
+    def training(self, limit=5000):
+        """Every teaching record, newest first."""
+        return self._all("SELECT * FROM training ORDER BY at DESC, id DESC LIMIT ?", (limit,))
+
+    def training_counts(self):
+        """One row per issue the team set aside: how many times, why, and when it last happened.
+        Newest teaching first by count. -> list of dicts."""
+        rows = self._all("SELECT issue_id, issue_name, reason, at, cv FROM training")
+        out = {}
+        for r in rows:
+            d = out.setdefault(r["issue_id"] or "", {"issue_id": r["issue_id"] or "", "issue": r["issue_name"] or "",
+                                                     "times": 0, "reasons": {}, "last": "", "last_cv": ""})
+            d["times"] += 1
+            d["reasons"][r["reason"] or ""] = d["reasons"].get(r["reason"] or "", 0) + 1
+            if (r["at"] or "") >= d["last"]:
+                d["last"], d["last_cv"] = r["at"] or "", r["cv"] or ""
+        return sorted(out.values(), key=lambda d: (-d["times"], d["issue"]))
+
+    def delete_training(self, tid):
+        self._run("DELETE FROM training WHERE id = ?", (tid,))
+
+    def clear_training(self):
+        """Forget every teaching record (the checks, the settings and the accounts stay)."""
+        return self._empty("training")["training"]
+
     # --- settings an admin saved ------------------------------------------------------------------------------
     def saved_settings(self):
         return {r["key"]: r["value"] for r in self._all("SELECT key, value FROM settings")}
@@ -321,7 +379,51 @@ class Store:
         self._run("DELETE FROM settings WHERE key = ?", (key,))
 
     # --- a clean start (reset_data.py) -----------------------------------------------------------------------
-    DATA_TABLES = ("checks", "admin_log", "daily_checks", "login_guard")
+    DATA_TABLES = ("checks", "admin_log", "daily_checks", "login_guard", "training")
+
+    def _remove_files(self):
+        """Remove every kept resume file (and any file nobody points to). -> how many were removed."""
+        gone = 0
+        for name in sorted(os.listdir(self.files)):
+            path = os.path.join(self.files, name)
+            if os.path.isfile(path):
+                try:
+                    os.remove(path)
+                    gone += 1
+                except OSError:
+                    pass
+        return gone
+
+    def _empty(self, *tables):
+        """Remove every row of these tables. -> {table: rows removed}. New rows start at 1 again."""
+        with self._lock:
+            con = self.db()
+            try:
+                with con:
+                    gone = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
+                    for t in tables:
+                        con.execute(f"DELETE FROM {t}")
+                    try:
+                        marks = ", ".join("?" for _ in tables)
+                        con.execute(f"DELETE FROM sqlite_sequence WHERE name IN ({marks})", tables)
+                    except sqlite3.OperationalError:
+                        pass
+            finally:
+                con.close()
+        return gone
+
+    def clear_checks(self):
+        """A fresh History and Needs review: every check goes, with its kept resume file.
+        What stays: the settings, the Activity log, the daily counts and the admin accounts.
+        -> {"checks": rows removed, "files": files removed}"""
+        gone = self._empty("checks")
+        gone["files"] = self._remove_files()
+        self._last_clean = None
+        return gone
+
+    def clear_log(self):
+        """A fresh Activity log (the admin's own action is written after this). -> rows removed."""
+        return self._empty("admin_log")["admin_log"]
 
     def clear_data(self):
         """A clean start: empty History and Needs review (their notes and "Reviewed by" go with the rows), empty
@@ -334,30 +436,45 @@ class Store:
 
         -> {table: rows removed, ..., "files": files removed}.
         """
-        with self._lock:
-            con = self.db()
-            try:
-                with con:
-                    gone = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in self.DATA_TABLES}
-                    for t in self.DATA_TABLES:
-                        con.execute(f"DELETE FROM {t}")
-                    try:                            # new rows start at 1 again
-                        con.execute("DELETE FROM sqlite_sequence WHERE name IN ('checks', 'admin_log')")
-                    except sqlite3.OperationalError:
-                        pass
-            finally:
-                con.close()
-        gone["files"] = 0
-        for name in sorted(os.listdir(self.files)):       # the kept resume files (and any file nobody points to)
-            path = os.path.join(self.files, name)
-            if os.path.isfile(path):
-                try:
-                    os.remove(path)
-                    gone["files"] += 1
-                except OSError:
-                    pass
+        gone = self._empty(*self.DATA_TABLES)
+        gone["files"] = self._remove_files()
         self._last_clean = None
         return gone
+
+    # --- staying signed in (a cookie that lasts, so the password is typed once) -------------------------------
+    def remember_admin(self, token, admin):
+        """Keep this browser signed in as `admin`: only a random token is stored, never a password."""
+        stamp = now().strftime(TIME_FORMAT)
+        self._run("INSERT INTO admin_sessions (token, admin, created_at, seen_at) VALUES (?, ?, ?, ?) "
+                  "ON CONFLICT(token) DO UPDATE SET admin = excluded.admin, seen_at = excluded.seen_at",
+                  (token, admin, stamp, stamp))
+
+    def admin_of_token(self, token, days=SESSION_DAYS):
+        """The admin this token belongs to, or None (an unknown token, or one that has not been used for `days`).
+        A visit keeps the token alive."""
+        if not token:
+            return None
+        rows = self._all("SELECT admin, seen_at FROM admin_sessions WHERE token = ?", (token,))
+        if not rows:
+            return None
+        try:
+            seen = dt.datetime.strptime(rows[0]["seen_at"], TIME_FORMAT)
+        except (TypeError, ValueError):
+            seen = now()
+        if (now() - seen).days >= days:
+            self.forget_token(token)
+            return None
+        self._run("UPDATE admin_sessions SET seen_at = ? WHERE token = ?", (now().strftime(TIME_FORMAT), token))
+        return rows[0]["admin"]
+
+    def forget_token(self, token):
+        """Sign one browser out (the cookie is cleared by the page as well)."""
+        if token:
+            self._run("DELETE FROM admin_sessions WHERE token = ?", (token,))
+
+    def forget_all_tokens(self):
+        """Sign every browser out (used by reset_data.py: a clean start, a fresh sign in). -> rows removed."""
+        return self._empty("admin_sessions")["admin_sessions"]
 
 
 COLUMNS = ("created_at", "checked_by", "candidate", "file_name", "file_path", "file_deleted_at", "with_job",

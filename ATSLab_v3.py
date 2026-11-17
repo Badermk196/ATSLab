@@ -431,14 +431,39 @@ def _job_row(text):
     return bool(find_ranges(t)) and t[:1].isalpha() and len(t.split()) <= 16
 
 
+JOB_ROLE_WORDS_RE = re.compile(
+    r"\b(manager|engineer|specialist|lead|director|analyst|developer|executive|coordinator|consultant|"
+    r"officer|partner|designer|head|intern|associate|planner|scientist|architect|administrator|representative|"
+    r"supervisor|strategist|buyer|accountant|technician|advisor|programmer|marketer|recruiter|professional|"
+    r"lawyer|attorney|counsel|teacher|researcher|nurse|architect|writer|editor|producer|operator|assistant)\b",
+    re.I,
+)
+
+
+def _likely_job_row(text):
+    """A dated line that looks like a job, not a dated course, workshop, or skill."""
+    t = text.strip()
+    return _job_row(t) and bool(JOB_ROLE_WORDS_RE.search(t))
+
+
 def synthesize_experience(sections):
-    """-> sections where the jobs found under other headings (company names, a highlights box) are Experience too.
-    Each run of such sections, from the first job line up to a section that is not experience (achievements,
-    languages, skills, ...), becomes an Experience section. Resumes without such jobs keep the very same list."""
+    """Keep all dated job runs, even when a resume inserts Skills or Certifications between them.
+
+    A resume can contain a second group of jobs after a non-work section. The old parser stopped at that section and
+    lost the later jobs. We split only at a dated line that also contains a real role word, so dated workshops,
+    education, and ordinary skill lines are not promoted to jobs.
+    """
     out, si, changed = [], 0, False
     while si < len(sections):
         sec = sections[si]
-        ri = next((k for k, r in enumerate(sec["rows"]) if _job_row(r["text"])), None)             if sec["kind"] not in EXPERIENCE_NOT_FROM + ("experience", "projects") else None
+        if sec["kind"] in ("experience", "projects"):
+            ri = None
+        elif sec["kind"] in ("skills", "competencies", "certifications"):
+            ri = next((k for k, r in enumerate(sec["rows"]) if _likely_job_row(r["text"])), None)
+        elif sec["kind"] in EXPERIENCE_NOT_FROM:
+            ri = None
+        else:
+            ri = next((k for k, r in enumerate(sec["rows"]) if _likely_job_row(r["text"])), None)
         if ri is None:
             out.append(sec)
             si += 1
@@ -446,7 +471,8 @@ def synthesize_experience(sections):
         changed = True
         start, title_first = ri, False
         prev = sec["rows"][ri - 1]["text"].strip() if ri else None
-        if ri and prev and len(prev.split()) <= 10 and not find_ranges(prev) and not re.match(r"^[•\-*]", prev):
+        if (sec["kind"] not in EXPERIENCE_NOT_FROM and ri and prev and len(prev.split()) <= 10
+                and not find_ranges(prev) and not re.match(r"^[•\-*]", prev)):
             start = ri - 1                               # the company line above the job line
         elif not ri:
             title_first = True                           # the section's own title is the company line
@@ -462,7 +488,8 @@ def synthesize_experience(sections):
             rows += [{"page": t["rows"][0]["page"] if t["rows"] else 0, "text": t["title"], "cells": [t["title"]]}]                 + t["rows"]
             sj += 1
         merged = ([sec["title"]] if title_first else []) + [sections[k]["title"] for k in range(si + 1, sj)]
-        out.append({"title": "EXPERIENCE", "kind": "experience", "rows": rows, "merged_titles": merged})
+        out.append({"title": "EXPERIENCE", "kind": "experience", "rows": rows, "merged_titles": merged,
+                    "hidden_jobs": sec["kind"] not in ("experience", "projects")})
         si = sj
     return out if changed else sections
 
@@ -480,8 +507,16 @@ def analyse(doc):
         else:
             header.append(r)
     sections = synthesize_experience(sections)
-    exp_lines = [r["text"].strip() for s in sections if s["kind"] == "experience" for r in s["rows"]]
+    exp_lines, hidden_lines = [], set()
+    for s in sections:
+        if s["kind"] != "experience":
+            continue
+        start = len(exp_lines)
+        exp_lines += [r["text"].strip() for r in s["rows"]]
+        if s.get("hidden_jobs"):
+            hidden_lines.update(range(start, len(exp_lines)))
     jobs = parse_jobs(exp_lines)
+    jobs = [j for j in jobs if j["line"] not in hidden_lines or _likely_job_row(exp_lines[j["line"]])]
 
     recent_from = TODAY.year - RECENT_YEARS
     chunks = [(" ".join(r["text"] for r in header), OLD_LOCATION)]
@@ -668,6 +703,11 @@ def detect_b1(doc, ana):
 
 
 SKILL_SEP = r"[,;|\u2022\u00b7]"   # "Category: Python, SQL" / "Python | SQL" / "\u2022 Python \u2022 SQL"
+SKILL_CATEGORY_ONLY_RE = re.compile(
+    r"^(?:(?:technical|soft|core|professional|functional|interpersonal|transferable|industry|domain|computer|language|additional|other)\s+)?"
+    r"(?:skills?|competencies|proficiencies|expertise|abilities|knowledge)$",
+    re.I,
+)
 
 
 def skill_items(rows):
@@ -683,6 +723,13 @@ def skill_items(rows):
             items += [c.strip() for c in r["cells"]]          # grid: one skill per column
         elif ":" in r["text"] and r["text"].split(":", 1)[1].strip():
             items.append(r["text"].split(":", 1)[1].strip())
+        else:
+            # Many readable resumes list one skill on each line.  The old detector
+            # counted only comma/pipe lists, labelled rows, and grids, so it called
+            # a normal one-per-line Skills section "category names only".
+            text = r["text"].strip()
+            if text and not SKILL_CATEGORY_ONLY_RE.fullmatch(text) and len(text.split()) <= 8 and len(text) <= 80:
+                items.append(text)
     return items
 
 

@@ -36,9 +36,19 @@
       "name": "Tareq old sidebar resume",
       "file": "weakcvs/Tareq_old_sidebar_CV.pdf",
       "range": [
-        35,
-        45
-      ]
+        49,
+        51
+      ],
+      "range_note": {
+        "changed": "2026-11-12",
+        "old_range": [
+          35,
+          45
+        ],
+        "measured_rules_only": 50.6,
+        "measured_with_ai_review": 49.3,
+        "reason": "Updated after the general experience parser began reading two real jobs that the old parser missed: Ecommerce Lead (2019–2020) and Senior / Media Manager (2014–2019). The weak-set maximum remains 60."
+      }
     },
     {
       "name": "Tareq new resume",

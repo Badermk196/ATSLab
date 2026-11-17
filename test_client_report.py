@@ -63,9 +63,9 @@ class TestClientReport(unittest.TestCase):
     def test_the_two_scores_side_by_side(self):
         old, new = pair("mohamed")
         doc = D.comparison_document(old, new)
-        d = round(new["score"]) - round(old["score"])
-        self.assertIn(f'Original resume: {D.fmt(old["score"])}', doc)
-        self.assertIn(f'1000Jobs resume: {D.fmt(new["score"])}', doc)
+        d = int(new["score"]) - int(old["score"])
+        self.assertIn(f'Original resume: {D.fmt_score(old["score"])}', doc)
+        self.assertIn(f'1000Jobs resume: {D.fmt_score(new["score"])}', doc)
         self.assertIn(f'({"+" if d >= 0 else "−"}{abs(d)})', doc)
         for p in ("readability", "content", "structure"):
             self.assertIn(f'<tr><td>{D.PART_NAMES[p]}</td><td>{D.fmt(old["parts"][p])}</td>'

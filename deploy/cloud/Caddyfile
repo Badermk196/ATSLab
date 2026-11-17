@@ -1,0 +1,10 @@
+# Caddy for the Cloud Computer HTTPS mode.
+# DOMAIN comes from .env (example: 34-12-56-78.sslip.io).
+# Caddy gets the Let's Encrypt certificate by itself; nothing else to do.
+# Streamlit needs WebSockets and the uploads, and the app counts the free checks per person
+# from the X-Forwarded-For header: Caddy sends all of that through.
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8501
+}

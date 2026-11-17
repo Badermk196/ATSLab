@@ -4,6 +4,91 @@ Run with `py -3.12`. Frozen: v1.0 in `release-v1.0\`, v1.1 in `release-v1.1\`, v
 `release-v1.3\`, v1.4 in `release-v1.4\`. Pre-launch re-test (robustness, edge cases, security, load):
 `PRELAUNCH_v1.2.md` (v1.4: `security_v1.4.log`, `load_v1.4.log`).
 
+## The X is now the Lab's teaching signal (2026-11-16, no scoring change)
+
+### The score is shown as a whole number (display only, same round)
+
+Bader's rule, from his own example: "79.9 show only 79 - no decimal numbers". The SCORE is printed as a whole
+number everywhere (79.9 -> 79, 79.0 -> 79, 100 -> 100); the decimals are dropped, never rounded up. POINTS keep
+their decimal (a 3.6-point issue still reads "+3.6 pts"), otherwise a 0.4-point issue would show as "+0" and hide
+a real problem. The scorer's own numbers are untouched: the score is still computed and stored exactly as before
+(one decimal), so no rule, weight, threshold, penalty, cap or gate changed and every reference score is the same.
+
+| # | Item | Status |
+|---|---|---|
+| 1 | `dashboard.py`: new `fmt_score(p)` (whole number) next to `fmt(p)` (points, one decimal) | done |
+| 2 | Whole number everywhere the score appears: the big circle (`gauge`), "Now / After top fixes", the headline ("can reach about X"), the plain sentence, the client comparison (both sides and the difference), the Admin comparison line, the Admin history table, the log line and the CSV export | done |
+| 3 | `lab_ui.py`: the score pill and the score ring (Admin + User page) use a whole number | done |
+| 4 | `user_page.py`: "can reach about X" uses the whole number | done |
+| 5 | Not changed on purpose: the points of an issue, the part percentages, the meaning match %, the issue count, and the average score of the History cards (a whole number already) | done |
+
+Tests updated to the new rule (display only): `test_dashboard` (the circle and the two "can reach" lines),
+`test_jobmode` (the sentence under the score), `test_client_report` (both scores and the difference),
+`test_app_pages` (the User page ring), and `test_set_aside` (the score keeps its own decimal inside, the page
+prints a whole number; `fmt_score` is now covered).
+
+Results: quick suite 653 tests, 0 failed, 2 errors, 7 skipped (13.9 min; the 2 errors are the Edge-headless PDF
+prints, which the test sandbox cannot run). Reference suite 16/16, 0 failed (3.5 min): every reference score is
+exactly the same as before, as expected for a display-only change.
+
+Bader's round: the team-only X on an issue card used to set the issue aside silently. It now asks WHY,
+records the reason (manual training), changes the score, and shows the log so the team can fix the checks
+that cause false alarms. Admin only; no rule, weight, threshold, penalty, cap or gate changed.
+
+| # | Item | Status |
+|---|---|---|
+| 1 | `dashboard.py`: added the missing `TRAIN_REASONS` and `TRAIN_TEXT` (they were referenced by the set-aside form but never defined, so the first X press raised `NameError`). Five reasons: false alarm, not important for this role, already fixed, the Lab's rule is too strict here, other (with a free note) | done |
+| 2 | `dashboard.py`: `render(..., set_aside=False, trainer=None, training=None)` passes both to `set_aside_controls`. A failed save never blocks the X (the trainer call is wrapped, with a clear warning) | done |
+| 3 | `admin_page.py`: `training_hooks(who)` returns `(trainer, training)`; `check_view` passes them into `D.render(...)`. The trainer writes a `training` row (admin, check id, cv, job title, score, issue ids, card, reason, note, evidence) and an Activity log line | done |
+| 4 | `lab_text.py`: `LOG_KINDS["training"] = ("Teaching", "Set an issue aside")`, `LOG_DETAILS["training"] = "Set aside ({reason})"` | done |
+| 5 | The Admin report shows the aggregated log (issue, code, times set aside, why, last time) and a CSV download. The User page and the client report show nothing | done, tested |
+
+Tests: `test_set_aside.py` grew to 20 tests (texts and reasons exist; the log counts and names the reasons;
+the CSV keeps the reason; the X asks WHY then saves the reason, a fake trainer records it and the issue leaves
+the report; a plain report has no training controls). The older "pressing X changes the report" test now follows
+the new two-step flow. All 20 pass. Quick suite (sandbox, offline): 653 tests, 0 failed, 2 errors, 7 skipped
+(the 2 errors are Edge-headless PDF printing, which the test sandbox cannot run; unrelated to this change).
+Reference suite: 16/16, 0 failed, 0 errors (202 s) - no reference score moved.
+
+## Set an issue aside + clearer cards (2026-11-16, no scoring change)
+
+Bader's round: (1) a team-only X on an issue card that stops it counting and changes the score, small changes
+included; (2) clearer "why it hurts" / "how to fix it"; (3) the present-tense card must not read like a bug;
+(4) Netlify dropped for now.
+
+| # | Item | Status |
+|---|---|---|
+| 1 | `cv_score.py`: `score_with` split into `fixed_state` + `parts_score_with` + `score_with`, so a page reads the score AND the parts from ONE computation. `_part_costs` keeps each issue's own part cost (taken before `part_explain` pops `_cost`). The result gains `_parts_with` and `_part_costs`. No rule, weight, threshold, penalty, cap or gate changed | done, tested |
+| 2 | `dashboard.py`: `set_aside_key/cards/ids`, `view_with` (a set-aside issue is treated as FIXED, so its points come back through the scorer's own counterfactual and the parts are scaled the same way), `set_aside_controls` (one X per card, one to put it back), `render(..., set_aside=False)` | done, tested |
+| 3 | `fmt` no longer rounds a 0.1 away (71.1 shows as 71.1); the big circle uses `fmt` too | done, tested |
+| 4 | Clearer text for `skills_unreadable` (what the ATS found, why it matters, a real example) and `tense` (a style point, not a reading problem) | done |
+| 5 | `admin_page.py` passes `set_aside=True` — Admin only; the User page and the PDF report are unchanged | done, tested |
+
+New file: `test_set_aside.py` (15 tests). Two older tests updated because the page no longer rounds the score
+(`test_dashboard.test_big_circle_...`, `test_pdf.test_one_plain_sentence_...`); the meaning of both is the same.
+Quick suite 654 tests, 0 failures, 4 skipped (904 s); reference test 16/16 (231 s).
+Summary for Bader: `outputs\Fix_round_2026-11-16.md`.
+**Open question:** the present-tense check still costs points (it can be set aside with one press). Removing it
+from the score is a scoring change and needs Bader's OK first.
+
+## Second opinion (Admin page only), 2026-11-10 (no scoring change)
+
+| # | Item | Status |
+|---|---|---|
+| 1 | "Second opinion" section under the big ATS Lab score on the Admin page: two extra ATS checkers, "Resume Matcher" (keyword match, compared with our Job match) and "ATS Checker 2" (general score, compared with our main score) | done, checked in screenshots |
+| 2 | Each card is empty until the team presses its button; then it shows its number, the Lab's label (84 = Strong), the difference (Agrees within 10 points / Higher / Lower) with the points, when it was checked, and "Check again" | done, tested |
+| 3 | The Resume Matcher card also shows the keyword match and, when it disagrees, the top 5 missing keywords | done, tested |
+| 4 | Card states: not checked yet, Checking..., Needs a job description, Not available right now, Switched off in Settings; Settings has one on/off switch per checker | done, tested |
+| 5 | The section never changes the score; the user page, the client report and the standalone dashboard draw nothing new (`dashboard.render` draws it only when the Admin page passes the `after_score` hook) | done, tested |
+| 6 | An answer is kept per resume AND per job description, so a different file or job never reuses an old answer | done, tested |
+| 7 | Both checkers run on this device: no resume leaves the computer | done |
+
+New file: `test_second_opinion.py` (21 tests, ~3 s, no model, no cost). Changed: `lab_second.py`,
+`lab_settings.py`, `lab_text.py`, `lab_ui.py`, `dashboard.py`, `admin_page.py`.
+Reference suite 16/16 (`ref_10nov.log`); quick suite 613 tests, 0 failures, 4 skipped (`quick_10nov.log`).
+Pictures: `outputs\Second_opinion_0_where_it_sits.png` ... `Second_opinion_5_settings_switches.png`;
+report: `outputs\ATS_Lab_Second_Opinion_2026-11-10.md`.
+
 ## Part 5: v1.4, the redesign (no scoring change: score version still `2026-10-30.v1.3`)
 
 | # | Page / item | Status |
@@ -116,3 +201,53 @@ Chromium on Linux only); `test_ATSLab_v3.py` (skips the frozen `release-*` folde
 - Reference test: 15 tests, all pass (299 s). Scores did not change.
 - In a real browser (Edge, headless): resume uploaded on `/user` at phone width, result shown; signed in on `/admin`; History,
   opening a past report, Needs review and Settings all work.
+
+## Round: Manus Cloud Computer deployment bundle (17 Nov 2026)
+
+Prepared the full deployment so only spinning up the machine and publishing is left. No scoring code changed.
+
+Added deploy/cloud/:
+- docker-compose.yml         direct port mode (http://IP:8501), single app container, named volume atslab-data
+- docker-compose.https.yml   HTTPS mode: app + Caddy, automatic Let's Encrypt certificate
+- Caddyfile                  reverse proxy for the HTTPS mode
+- .env.example               the two required settings plus the optional links and limits
+- install.sh                 one shot: Docker, UFW ports, .env check, build, start, systemd auto-start
+- package.ps1                builds atslab-deploy.tar.gz (code only, no secrets, no data)
+- README-CLOUD.md            the runbook, costs and troubleshooting
+
+Verified: both compose files pass "docker compose config"; the HTTPS file correctly refuses an empty DOMAIN;
+the tarball is 0.5 MB and contains app.py, run_app.py, Dockerfile, requirements.txt, .dockerignore and the
+deploy/cloud files. install.sh could not be linted locally (no bash, Docker daemon not running) and was
+reviewed by hand instead.
+
+Not done: no Cloud Computer is attached to this session, so nothing has been deployed yet.
+
+## Cloud Computer deployment kit (17 Nov 2026)
+Added deploy/cloud/ so only spinning up the machine and publishing is left:
+- docker-compose.yml (direct port 8501) and docker-compose.https.yml (Caddy + sslip.io free HTTPS)
+- Caddyfile, .env.example, install.sh (Docker, UFW, build, systemd auto-start), README-CLOUD.md
+- package.ps1 builds deploy/cloud/atslab-deploy.tar.gz (0.5 MB, code only: no secrets, no data)
+Validated: both compose files pass "docker compose config"; the tarball contains app.py, run_app.py,
+Dockerfile, requirements.txt and the whole deploy/cloud kit. No scoring rule was touched.
+
+## 17 Nov 2026 - Cloud Computer deployment bundle (prepared, not yet deployed)
+
+The Lab is a Streamlit/Python app (torch + Chromium), so Manus web publishing cannot host it.
+The only "on Manus" path is a Manus Cloud Computer running the Docker image. Everything is prepared
+so that only spinning up the machine and running one command remains.
+
+New folder `deploy/cloud/`:
+- `docker-compose.yml` - direct port mode, http://IP:8501 (fastest test).
+- `docker-compose.https.yml` - app + Caddy, HTTPS with a free `<ip-with-dashes>.sslip.io` name.
+- `Caddyfile` - reverse proxy for the HTTPS mode.
+- `.env.example` - the settings to fill in (OPENROUTER_API_KEY, ATSLAB_ADMINS, optional DOMAIN).
+- `install.sh` - installs Docker, opens UFW ports, checks .env, builds, starts, enables boot start.
+- `package.ps1` - builds `atslab-deploy.tar.gz` (code only, no secrets/history/resumes).
+- `README-CLOUD.md` - the runbook.
+
+Verified: both compose files pass `docker compose config` (HTTPS mode correctly refuses an empty
+DOMAIN); the tarball is 0.5 MB and contains app.py, run_app.py, Dockerfile, requirements.txt,
+.dockerignore and the deploy/cloud files. `install.sh` could not be linted locally (no bash, Docker
+daemon not running) and was reviewed by hand instead.
+
+No scoring rule, weight or threshold was touched. This round only adds deployment files.

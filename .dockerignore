@@ -46,3 +46,6 @@ sidebar_check.py
 .env
 deploy/
 golden_extra/
+.git/
+.manus/
+*.tar.gz

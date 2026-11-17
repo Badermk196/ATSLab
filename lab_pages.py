@@ -20,6 +20,7 @@ import lab_ui as UI
 MAX_RUNNING = 3                 # checks running at the same time; the others wait in the queue
 QUEUE_POLL = 1.0                # seconds between two updates of "N people ahead of you"
 BROWSER_COOKIE = "atsl_browser"
+ADMIN_COOKIE = "atsl_admin"     # the Admin page's "stayed signed in" token (never a password)
 QUEUE_TEXT = T.QUEUE_TEXT       # the texts are in lab_text.py
 
 
@@ -94,6 +95,28 @@ def browser_id():
                 f'</script>', unsafe_allow_javascript=True)       # only our own random hex id, never user input
         st.session_state["atsl_cookie_set"] = True
     return bid
+
+
+def admin_token():
+    """The "stayed signed in" token of this browser, or None. The cookie holds a random token only: the password is
+    never stored, and "Sign out" (or 30 days without a visit) ends it."""
+    try:
+        known = st.context.cookies.get(ADMIN_COOKIE)
+    except Exception:
+        known = None
+    return known if isinstance(known, str) and re.fullmatch(r"[0-9a-f]{32}", known) else None
+
+
+def set_admin_token(token):
+    """Keep this browser signed in: a random token in a cookie for a month (only our own hex token is written)."""
+    st.html(f'<script>document.cookie = "{ADMIN_COOKIE}={token}; Max-Age=2592000; Path=/; SameSite=Lax";</script>',
+            unsafe_allow_javascript=True)
+
+
+def clear_admin_token():
+    """Forget the sign-in of this browser (Sign out)."""
+    st.html(f'<script>document.cookie = "{ADMIN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax";</script>',
+            unsafe_allow_javascript=True)
 
 
 def visitor_keys():

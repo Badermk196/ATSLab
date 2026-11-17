@@ -1,0 +1,41 @@
+# 1000Jobs ATS Lab - Manus Cloud Computer, direct port mode (fastest, no HTTPS)
+# The app is reachable at  http://<CLOUD-COMPUTER-PUBLIC-IP>:8501
+# Use this first to prove the app runs. For a real HTTPS address see docker-compose.https.yml.
+#
+#   cd /opt/atslab/deploy/cloud
+#   docker compose up -d --build
+#
+# Restart policy "unless-stopped" plus the compose restart on boot (see install.sh) means
+# the app comes back after a reboot, a tier upgrade or a backup restore.
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: atslab:cloud
+    container_name: atslab-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ATSLAB_DATA_DIR: /data
+      TZ: Asia/Dubai
+    ports:
+      - "8501:8501"
+    volumes:
+      - atslab-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  atslab-data:          # the history database and the kept resume files: back this up

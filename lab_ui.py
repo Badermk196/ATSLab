@@ -58,6 +58,11 @@ PALETTE = """
 """
 
 BASE = """
+/* The page must never jump sideways: while a view is short there is no scroll bar, and a long list makes one appear
+   and take ~10px of width, so the whole page moved. The room for it is kept on the one element that really scrolls
+   (stMain), which is why the content keeps exactly the same width on every view. Only that element: any other
+   container would take its own 10px and the page would just be narrower. The sidebar has its own rule below. */
+[data-testid="stMain"] {scrollbar-gutter: stable;}
 .stApp {background: var(--a-bg); color: var(--a-text);}
 .stApp, .stApp p, .stApp label, .stApp button, .stApp input, .stApp textarea, .stApp li, .stApp h1, .stApp h2,
 .stApp h3, .stApp [data-testid="stMarkdownContainer"], .stApp [data-testid="stCaptionContainer"],
@@ -369,6 +374,37 @@ section[data-testid="stSidebar"] [class*="st-key-nav_"] button:hover {background
 .a-server li {overflow-wrap: anywhere;}
 .a-server code {font-size: .82rem;}
 
+/* Second opinion (Admin page only): two extra ATS checkers under the Lab score. They are smaller than the
+   score card and read the Lab's own numbers; they never change them. */
+.so-head {display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin: 26px 0 12px 0;}
+.so-title {font-size: 1.06rem; font-weight: 700; color: var(--a-text); letter-spacing: -.2px;}
+.so-num {display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  border-radius: 6px; background: var(--a-pri-soft); color: var(--a-pri-text); font-size: .72rem; font-weight: 700;
+  margin-right: 8px; vertical-align: 1px;}
+.so-sub {color: var(--a-muted); font-size: .85rem; font-weight: 500; margin-left: 8px;}
+.so-head-right {color: var(--a-ok); font-size: .85rem; font-weight: 600;}
+.so-head-right.grey {color: var(--a-muted);}
+.so-card {min-width: 0;}
+.so-name {font-size: .96rem; font-weight: 700; color: var(--a-text);}
+.so-name .so-dot {color: var(--a-muted); font-weight: 600; margin-left: 6px; font-size: .8rem;}
+.so-sub2 {color: var(--a-muted); font-size: .8rem; margin-top: 1px;}
+.so-top {display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 10px;}
+.so-big {font-size: 2rem; font-weight: 800; color: var(--a-text); letter-spacing: -.6px; line-height: 1;}
+.so-of {color: var(--a-muted); font-size: .72rem; margin-left: 4px;}
+.so-lab {color: var(--a-muted); font-size: .78rem;}
+.so-state {color: var(--a-text-2); font-size: .9rem; font-weight: 600; margin-top: 10px;}
+.so-note {color: var(--a-muted); font-size: .8rem; margin-top: 4px;}
+.so-bar {height: 6px; border-radius: 999px; background: var(--a-line-2); overflow: hidden; margin: 8px 0 4px 0;}
+.so-bar i {display: block; height: 100%; background: var(--a-pri);}
+.so-kw {display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--a-muted);
+  font-size: .8rem;}
+.so-kw b {color: var(--a-text-2); font-weight: 600;}
+.so-foot {display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px;}
+.so-when {color: var(--a-muted); font-size: .76rem;}
+.so-section-note {color: var(--a-muted); font-size: .82rem; margin: 12px 0 4px 0;}
+.st-key-card-so-matcher, .st-key-card-so-checker2 {padding: 18px 20px;}
+
 @media (max-width: 640px) {
   .block-container, [data-testid="stMainBlockContainer"] {padding-top: 60px !important;}
   .stApp .a-table {min-width: 0;}
@@ -539,7 +575,7 @@ def tone_of(label):
 
 def pill(score, label):
     """The colored score box (69 yellow, 19 red, 92 green: the label's tone)."""
-    return f'<span class="a-pill a-{tone_of(label)}">{round(score or 0)}</span>'
+    return f'<span class="a-pill a-{tone_of(label)}">{int(float(score or 0))}</span>'
 
 
 def tag(text, tone="grey", icon=""):
@@ -574,7 +610,7 @@ def ring(score, label=None, size=96, stroke=8, sub=None, number_size=None):
     circ = 2 * 3.14159265 * r
     filled = circ * max(0.0, min(100.0, float(score or 0))) / 100
     c = size / 2
-    inner = f'<div class="n" style="font-size:{number_size or round(size * .3)}px">{round(score or 0)}</div>'
+    inner = f'<div class="n" style="font-size:{number_size or round(size * .3)}px">{int(float(score or 0))}</div>'
     if sub:
         inner += f'<div class="o">{esc(sub)}</div>'
     elif label:

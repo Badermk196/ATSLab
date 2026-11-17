@@ -95,7 +95,7 @@ class TestReportTemplate(unittest.TestCase):
         self.assertTrue(sentence.startswith("This resume scored "))
         self.assertIn("out of 100", sentence)
         self.assertIn("ATS", sentence)
-        self.assertEqual(sentence.count("."), 1)                      # one sentence
+        self.assertEqual(len(re.findall(r"\.(?!\d)", sentence)), 1)   # one sentence (a decimal score has a dot too)
         self.assertNotIn('class="plain"', D.score_html(self.r, self.cards))        # the dashboard page has none
 
     def test_every_issue_open_and_no_technical_details(self):

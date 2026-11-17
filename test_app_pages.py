@@ -383,7 +383,7 @@ class TestUserPage(Env):
             cards = D.issue_cards(r)
             text = U.result_html(r, cards)
             with self.subTest(with_job=with_job):
-                self.assertIn(f">{round(r['score'])}</div>", text)
+                self.assertIn(f">{int(r['score'])}</div>", text)
                 self.assertIn(D.esc(r["label"]), text)
                 for p in r["parts"]:
                     self.assertIn(D.PART_NAMES[p], text)

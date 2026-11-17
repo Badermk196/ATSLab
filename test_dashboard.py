@@ -201,7 +201,7 @@ class TestScoreAndCards(unittest.TestCase):
         self.assertEqual(set(r["parts"]), {"readability", "content", "structure"})
         self.assertTrue(set(r["parts"]) <= set(D.PART_NAMES))
         g = D.gauge(r["score"], 200, "Resume Score", r["label"])
-        self.assertIn(f">{round(r['score'])}</text>", g)
+        self.assertIn(f">{D.fmt_score(r['score'])}</text>", g)  # the circle shows the CV score as a whole number
         self.assertNotAlmostEqual(r["score"], r["parts"]["readability"], places=0)
 
     def test_every_issue_id_has_plain_texts(self):
@@ -504,9 +504,9 @@ class TestReport(unittest.TestCase):
         gains = {p: r["_score_with"]([i["id"] for i in r["issues"] if i["part"] == p]) for p in r["parts"]}
         self.assertEqual(s["best_part"], max(gains, key=gains.get))
         html_ = D.score_html(r, cards)
-        self.assertIn(f"Mohamed's resume can reach about <b>{D.fmt(s['after'])}</b> by fixing {s['n_fix']} issues.",
+        self.assertIn(f"Mohamed's resume can reach about <b>{D.fmt_score(s['after'])}</b> by fixing {s['n_fix']} issues.",
                       html_)
-        self.assertIn(f"After top fixes: about {D.fmt(s['after'])}", html_)
+        self.assertIn(f"After top fixes: about {D.fmt_score(s['after'])}", html_)
         self.assertEqual(D.parts_html(r, cards).count("Biggest gain"), 1)
 
     def test_one_points_scale(self):
