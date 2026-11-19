@@ -168,35 +168,34 @@ class Store:
             finally:
                 con.close()
 
-    # --- the daily check limit (User page) ------------------------------------------------------------------------
+    # --- the free check limit (User page) --------------------------------------------------------------------------
     def reserve_check(self, keys, limit, at=None):
-        """Count one check for every key (e.g. the browser and the IP address) when none of them has reached
-        `limit` checks today. -> True when counted, False when the limit is reached (nothing counted)."""
+        """Count one check for every key (e.g. the browser and the IP address) when none of them has used
+        `limit` checks in total. A visitor gets `limit` free checks, not `limit` per day. -> True when counted,
+        False when the limit is reached (nothing counted)."""
         day = (at or now()).date().isoformat()
 
         def work(con):
-            used = [con.execute("SELECT n FROM daily_checks WHERE day = ? AND who = ?", (day, k)).fetchone()
+            used = [con.execute("SELECT COALESCE(SUM(n), 0) FROM daily_checks WHERE who = ?", (k,)).fetchone()
                     for k in keys]
             if any(u is not None and u[0] >= limit for u in used):
                 return False
             for k in keys:
                 con.execute("INSERT INTO daily_checks (day, who, n) VALUES (?, ?, 1) "
                             "ON CONFLICT(day, who) DO UPDATE SET n = n + 1", (day, k))
-            old = ((at or now()) - dt.timedelta(days=KEEP_COUNT_DAYS)).date().isoformat()
-            con.execute("DELETE FROM daily_checks WHERE day < ?", (old,))
             return True
         return self._atomic(work)
 
     def release_check(self, keys, at=None):
         """Give back a counted check (it ended with a message, not a score)."""
-        day = (at or now()).date().isoformat()
-        self._atomic(lambda con: [con.execute("UPDATE daily_checks SET n = MAX(0, n - 1) WHERE day = ? AND who = ?",
-                                              (day, k)) for k in keys])
+        self._atomic(lambda con: [con.execute(
+            "UPDATE daily_checks SET n = MAX(0, n - 1) WHERE rowid = "
+            "(SELECT rowid FROM daily_checks WHERE who = ? ORDER BY day DESC, rowid DESC LIMIT 1)", (k,))
+            for k in keys])
 
     def checks_today(self, keys, at=None):
-        """The most checks any of the keys has made today."""
-        day = (at or now()).date().isoformat()
-        rows = [self._all("SELECT n FROM daily_checks WHERE day = ? AND who = ?", (day, k)) for k in keys]
+        """The most checks any of the keys has used in total (the name is kept for older callers)."""
+        rows = [self._all("SELECT COALESCE(SUM(n), 0) AS n FROM daily_checks WHERE who = ?", (k,)) for k in keys]
         return max([r[0]["n"] for r in rows if r] or [0])
 
     # --- wrong admin passwords (per name and per IP address, on the server) -------------------------------------

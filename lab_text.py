@@ -236,12 +236,12 @@ REVIEW_TEXT = {
 # ---------------------------------------------------------------------------
 USER_TEXT = {
     "app_badge": "ATS Checker", "go_site": "Go to 1000Jobs",
-    "tagline": "Free resume check",
-    "hero_pill": "FREE RESUME CHECK",
+    "tagline": "Resume check",
+    "hero_pill": "ATS RESUME CHECK",
     "hero_1": "Can hiring systems read", "hero_2": "your resume?",
     "hero_sub": "Upload your resume and get a score, the problems that hold it back, and how to fix them. Add a job "
                 "to see how well you match it.",
-    "ticks": ["Free, no account needed", "Clear score with the biggest problems first",
+    "ticks": ["No account needed", "Clear score with the biggest problems first",
               "Your resume is used only to create this report"],
     "upload_title": "Check your resume",
     "uploader": "Your resume (PDF)", "drop": "Drop your resume here or", "browse": "browse",
@@ -251,7 +251,7 @@ USER_TEXT = {
     "job_text": "Job description", "job_text_hint": "Paste the full job description here",
     "check": "Check my resume", "new": "Check another resume",
     "checking": "Checking your resume. This usually takes 20 to 60 seconds...",
-    "limit": "You've used today's {n} free checks. Please come back tomorrow.",
+    "limit": "You are out of limit. Go premium to try it again.",
     "privacy": "Your resume is used only to create this report. The file is deleted after {days} days.",
     "steps": [("01", "Upload", "Add your resume as a PDF, and a job if you have one in mind."),
               ("02", "Get your score", "See how readable, complete and well built your resume is."),
@@ -281,6 +281,7 @@ USER_TEXT = {
     "top": "What lowers your score most",
     "top_sub": "The issues with the biggest effect, starting with the most important.",
     "more": "+{n} more issue{s} found", "more_link": "See them with Premium",
+    "issues_to_solve": "{n} issue{s} to solve",
     "none": "No issues found. Well done!",
     "cta_title": "Let 1000Jobs fix it and apply for you",
     "premium": "Get Premium", "session": "Book a resume session",

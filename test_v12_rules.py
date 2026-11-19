@@ -182,7 +182,7 @@ class TestDailyLimit(Env):
         self.assertTrue(self.store.reserve_check(["browser:c", "ip:3.3.3.3"], 3))    # someone else
         self.assertEqual(self.store.checks_today(me), 3)
         tomorrow = H.now() + H.dt.timedelta(days=1)
-        self.assertTrue(self.store.reserve_check(me, 3, at=tomorrow))             # a new day
+        self.assertFalse(self.store.reserve_check(me, 3, at=tomorrow))            # the 3 tries are for the visitor, not per day
         self.store.release_check(me)
         self.assertTrue(self.store.reserve_check(me, 3))                          # a check given back
 

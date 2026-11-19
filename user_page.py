@@ -1,9 +1,10 @@
 """
 The User page (for job seekers). Design: "1000Jobs ATS Lab Redesign", pages 6 (landing) and 7 (result).
 
-Landing: "Free resume check", "no account needed", the upload card (an optional job title and job description) and
+Landing: "ATS resume check", "no account needed", the upload card (an optional job title and job description) and
 the privacy note (it says how many days the file is kept: the `file_days` setting).
-Result: the Resume Score and label, the parts (Job Match with a job), "can reach about X", the top 4 issues (each with
+Result: the Resume Score and label, the parts (Job Match with a job), "can reach about X", an "N issues to solve"
+banner, the top 4 issues (each with
 its name, its part and one short "why it matters" line), a locked "+N more issues found" line, "Why 1000Jobs" and the
 "Get Premium" and "Book a resume session" buttons (links are settings).
 Never shown here: how to fix, what the ATS reads, points per issue, the AI review, per-ATS details, keyword lists and
@@ -78,6 +79,9 @@ def issues_html(cards, premium_url="#"):
     if not cards:
         return f'<div class="u-h2">{USER_TEXT["top"]}</div><p class="u-h2sub">{USER_TEXT["none"]}</p>'
     shown, more = shown_issues(cards)
+    own = [c for c in cards if not c.get("ai")]
+    count = (f'<div class="u-count">{USER_TEXT["issues_to_solve"].format(n=len(own), s=T.plural(len(own)))}</div>'
+             if own else "")
     rows = "".join(f'<div class="u-issue"><span class="k">{n}</span><div style="min-width:0"><div class="t">'
                    f'{UI.esc(c["name"])}{UI.tag(D.PART_NAMES.get(D.card_part(c), ""), UI.PART_TONE.get(D.card_part(c), "grey"))}'
                    f'</div><div class="w">{UI.esc(short_why(c))}</div></div></div>' for n, c in enumerate(shown, 1))
@@ -85,7 +89,8 @@ def issues_html(cards, premium_url="#"):
             f'<div style="width:45%"></div><div style="width:70%"></div></div><div class="over"><div class="ic">'
             f'&#128274;</div><b>{USER_TEXT["more"].format(n=more, s=T.plural(more))}</b><a href="{UI.esc(premium_url)}" '
             f'target="_blank" rel="noopener">{USER_TEXT["more_link"]}</a></div></div>') if more > 0 else ""
-    return (f'<div class="u-h2">{USER_TEXT["top"]}</div><p class="u-h2sub">{USER_TEXT["top_sub"]}</p>{rows}{lock}')
+    return (f'<div class="u-h2">{USER_TEXT["top"]}</div><p class="u-h2sub">{USER_TEXT["top_sub"]}</p>'
+            f'{count}{rows}{lock}')
 
 
 def result_html(r, cards=None, premium_url="#"):

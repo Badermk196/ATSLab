@@ -1,4 +1,4 @@
-# 1000Jobs ATS Lab v1.4 - the package versions that work (Python 3.12), checked on 2026-10-31 (same as v1.1).
+﻿# 1000Jobs ATS Lab v1.4 - the package versions that work (Python 3.12), checked on 2026-10-31 (same as v1.1).
 # Install with:
 #   py -3.12 -m pip install -r requirements.txt          (Windows)
 #   python -m pip install -r requirements.txt            (a server, Docker, Streamlit Cloud)

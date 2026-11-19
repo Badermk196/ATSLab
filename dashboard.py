@@ -2289,6 +2289,8 @@ def make_pdf(html_doc, timeout=None):
                    "file:///" + src.replace("\\", "/").lstrip("/")]
             if os.name != "nt":                      # a server or a Docker container: Chromium needs no sandbox there
                 cmd.insert(2, "--no-sandbox")
+                # a container's /dev/shm is only 64 MB by default and Chromium crashes on it: print from /tmp instead
+                cmd.insert(2, "--disable-dev-shm-usage")
             try:
                 subprocess.run(cmd, check=True, timeout=timeout or PDF_TIMEOUT, stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL)

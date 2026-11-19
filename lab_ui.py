@@ -73,6 +73,8 @@ section[data-testid="stSidebar"] {font-family: FONT;}
 .stApp [data-testid="stElementContainer"]:has([data-testid="stHtml"]:empty) {display: none;}
 [data-testid="stToolbarActions"], [data-testid="stAppDeployButton"], [data-testid="stMainMenu"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display: none !important;}
+/* the "Made with Streamlit" badge and the footer bar: the app carries its own brand */
+[data-testid="stAppFooter"], footer {display: none !important;}
 header[data-testid="stHeader"] {background: transparent; pointer-events: none;}
 [data-testid="stExpandSidebarButton"] {pointer-events: auto; background: var(--a-card); border: 1px solid var(--a-line);
   border-radius: 10px; box-shadow: var(--a-shadow);}
@@ -490,6 +492,8 @@ section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [da
 .u-part .s {color: var(--a-muted); font-size: .8rem;}
 .u-h2 {font-size: 1.45rem; font-weight: 800; color: var(--a-text); letter-spacing: -.4px; margin: 36px 0 2px 0;}
 .u-h2sub {color: var(--a-muted); font-size: .95rem; margin: 0 0 16px 0;}
+.u-count {display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px 0; padding: 7px 14px;
+  border-radius: 99px; background: var(--a-pri-soft); color: var(--a-pri-text); font-size: .88rem; font-weight: 700;}
 .u-issue {display: flex; gap: 14px; align-items: flex-start; background: var(--a-card); border: 1px solid var(--a-line);
   border-radius: 16px; padding: 16px 18px; margin: 0 0 12px 0;}
 .u-issue .k {flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; background: var(--a-pri-soft);
