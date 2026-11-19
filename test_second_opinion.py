@@ -25,6 +25,7 @@ import admin_page as A
 import lab_second as SO
 import lab_settings as S
 import lab_text as T
+import ATSLab_v3 as L
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHECKED_AT = "2026-11-10 14:00:00"
@@ -116,6 +117,15 @@ class TestTheCheckers(unittest.TestCase):
         self.assertEqual(out["score"], out["pct"])
         self.assertTrue(out["keywords"], "the job description has real words")
         self.assertIn("stakeholder", out["matched"])
+
+    def test_a_skill_is_found_word_by_word(self):
+        """The words of a skill need not sit together: "team leadership" is found in "Team of 12 ...
+        leadership", and a skill with a word missing is still missing."""
+        text = "Team of 12 across the region; leadership and coaching."
+        self.assertFalse(L.contains("team leadership", text))            # not as a phrase
+        self.assertTrue(SO.found("team leadership", text))               # but word by word
+        self.assertFalse(SO.found("team leadership", "leadership only"))  # a word is missing
+        self.assertTrue(SO.found("release management", "release management"))   # a phrase still counts
 
     def test_the_checker2_gives_a_general_score(self):
         out = SO.run_checker2(self.res)

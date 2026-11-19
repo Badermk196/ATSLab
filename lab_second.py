@@ -117,6 +117,22 @@ def top_missing(answer, limit=MAX_MISSING_SHOWN):
     return list(answer.get("missing") or [])[:limit]
 
 
+def stems_of(text):
+    """Every stem in a text, once: the word set a word-by-word match is checked against."""
+    return {L.stem(t) for t in L.tokens(text or "")}
+
+
+def found(term, text, stems=None):
+    """Word by word: a term counts when every one of its words is in the resume, in any order and not
+    necessarily together ("team leadership" is found in "leading cross-functional teams"). A term that sits
+    together still counts, as before, so nothing that matched before stops matching."""
+    if L.contains(term, text):
+        return True
+    stems = stems if stems is not None else stems_of(text)
+    words = [L.stem(w) for w in L.tokens(term)]
+    return bool(words) and all(w in stems for w in words)
+
+
 # --- Resume Matcher: the job's own words, found in the resume --------------------------------------
 def keywords_of(job_text, limit=MAX_KEYWORDS):
     """The job description's real words, most frequent first (one spelling per stem).
@@ -167,7 +183,8 @@ def run_matcher(res, job_text, role=None):
     if not words:
         return {"error": "no_job", "source": source, "role": named}
     text = ((res.get("_doc") or {}).get("modern") or "") + "\n" + str(res.get("cv") or "")
-    matched = [w for w in words if L.contains(w, text)]
+    stems = stems_of(text)
+    matched = [w for w in words if found(w, text, stems)]
     missing = [w for w in words if w not in matched]
     pct = round(100 * len(matched) / len(words))
     return {"score": pct, "label": label_for(pct), "keywords": words, "matched": matched,

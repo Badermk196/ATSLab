@@ -248,12 +248,16 @@ class TestHistory(Env):
     def test_why_a_resume_needs_review(self):
         ok = [{"name": "Weak openers", "severity": "Minor"}]
         crit = ok + [{"name": "Template is hard for ATS to read", "severity": "Critical"}]
+        every = {"score": 55, "critical": True, "contact": True}
         self.assertEqual(H.review_reasons(fake(), ok), [])
         self.assertEqual(H.review_reasons(fake(55), ok), [])                            # 55 is not "under 55"
         self.assertEqual(H.review_reasons(fake(54.9), ok), ["Score under 55"])
-        self.assertEqual(H.review_reasons(fake(), crit), ["Critical issue: Template is hard for ATS to read"])
-        self.assertEqual(H.review_reasons(fake(email=False), ok), ["No email"])
-        self.assertEqual(H.review_reasons(fake(phone=False), ok), ["No phone"])
+        self.assertEqual(H.review_reasons(fake(), crit), [])                            # only a low score flags by default
+        self.assertEqual(H.review_reasons(fake(), crit, every), ["Critical issue: Template is hard for ATS to read"])
+        self.assertEqual(H.review_reasons(fake(email=False), ok), [])
+        self.assertEqual(H.review_reasons(fake(email=False), ok, every), ["No email"])
+        self.assertEqual(H.review_reasons(fake(phone=False), ok), [])
+        self.assertEqual(H.review_reasons(fake(phone=False), ok, every), ["No phone"])
 
     def test_a_check_is_saved_and_opened_again(self):
         r = result()
@@ -287,6 +291,7 @@ class TestHistory(Env):
 
     def test_history_and_review_views(self):
         rec = H.record_of(result(), H.USER)
+        self.store.save_setting("review_contact", True, "Tester")      # the team switched the contact trigger on
         self.store.add_check(dict(rec, review_reasons=["No phone"], review_facts=facts(no_phone=True),
                                   candidate="Needs Look"))
         self.store.add_check(dict(rec, review_reasons=[], review_facts=facts(), candidate="All Good"))

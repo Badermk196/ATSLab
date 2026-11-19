@@ -104,7 +104,7 @@ class TestStore(Env):
             con.close()
             store = H.Store(folder)
             row = store.history()[0]
-            self.assertEqual(row["review_reasons"], ["Score under 55", "No phone"])     # from its score and reasons
+            self.assertEqual(row["review_reasons"], ["Score under 55"])                 # from its score and reasons
             store.mark_reviewed(row["id"], "Sara", "called them")
             self.assertEqual(store.get(row["id"])["review_note"], "called them")
             store.log("Sara", "review", "x")
@@ -140,16 +140,17 @@ class TestReviewRules(Env):
         nophone = self.add("NoPhone", f=facts(no_phone=True))
         fine = self.add("Fine")
         ids = lambda rules=None: sorted(r["id"] for r in self.store.needs_review(rules))
-        self.assertEqual(ids(), sorted([low, crit, nophone]))
+        self.assertEqual(ids(), [low])                                                  # only a low score flags by default
         self.assertEqual(ids({"score": 45, "critical": True, "contact": True}), sorted([crit, nophone]))
         self.assertEqual(ids({"score": 55, "critical": False, "contact": False}), [low])
         self.assertEqual(ids({"score": 90, "critical": False, "contact": False}), sorted([low, crit, nophone, fine]))
         self.store.save_setting("review_contact", False, "Tester")
-        self.assertEqual(P.review_rules(), {"score": 55, "critical": True, "contact": False})
+        self.assertEqual(P.review_rules(), {"score": 55, "critical": False, "contact": False})
         self.assertNotIn(nophone, [r["id"] for r in self.store.needs_review(P.review_rules())])
 
     def test_one_tag_per_critical_issue(self):
-        reasons = H.reasons_for(facts(score=20, critical=["A is wrong", "B is wrong"]))
+        reasons = H.reasons_for(facts(score=20, critical=["A is wrong", "B is wrong"]),
+                                {"score": 55, "critical": True, "contact": True})
         self.assertEqual(A.reason_tags(reasons), ["Score under 55", "A is wrong", "B is wrong"])
 
 
@@ -253,6 +254,7 @@ class TestNeedsReview(Env):
     def test_card_note_and_mark_reviewed(self):
         cid = self.add("Ray Low", score=30, label="Not ready", f=facts(score=30, critical=["Template is hard"]),
                        lead_name="Ray Low", lead_email="ray@example.com")
+        self.store.save_setting("review_critical", True, "Tester")      # the team switched the Critical trigger on
         at = self.admin("review")
         text = all_text(at)
         for t in ("Ray Low", "ray@example.com", A.ADMIN_TEXT["why_flagged"], "Score under 55", "Template is hard",
@@ -273,6 +275,7 @@ class TestNeedsReview(Env):
     def test_the_subtitle_says_the_rules(self):
         self.store.save_setting("review_score", 70, "Tester")
         self.store.save_setting("review_critical", False, "Tester")
+        self.store.save_setting("review_contact", True, "Tester")
         at = self.admin("review")
         self.assertIn("a score under 70 or no email or no phone", all_text(at))
 
@@ -291,16 +294,16 @@ class TestSettingsPage(Env):
         at = self.admin("settings")
         at.number_input(key="set_file_days").set_value(14)
         at.number_input(key="set_review_score").set_value(70)
-        at.toggle(key="set_review_contact").set_value(False)
+        at.toggle(key="set_review_contact").set_value(True)
         next(b for b in at.button if b.label == A.ADMIN_TEXT["save"]).click().run()
         self.assertIn(A.ADMIN_TEXT["settings_saved"], all_text(at))
         saved = self.store.saved_settings()
         self.assertEqual((S.get("file_days", saved), S.get("review_score", saved), S.get("review_contact", saved)),
-                         (14, 70, False))
+                         (14, 70, True))
         details = {r["target"]: r["details"] for r in self.store.activity() if r["kind"] == "settings"}
         self.assertEqual(details[T.SETTINGS_TEXT["file_days"][0]], "30 days → 14 days")
         self.assertEqual(details[T.SETTINGS_TEXT["review_score"][0]], "55 → 70")
-        self.assertEqual(details[T.SETTINGS_TEXT["review_contact"][0]], "on → off")
+        self.assertEqual(details[T.SETTINGS_TEXT["review_contact"][0]], "off → on")
         user = AppTest.from_function(user_app, default_timeout=200).run()
         self.assertIn(U.USER_TEXT["privacy"].format(days=14), all_text(user))           # the privacy note updates
 

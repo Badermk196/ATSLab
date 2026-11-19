@@ -23,7 +23,7 @@ import lab_text as T
 DB_NAME = "atslab.db"
 FILES = "resumes"
 REVIEW_SCORE = 55                 # "Needs review": a score under this (the default; a setting: review_score)
-DEFAULT_RULES = {"score": REVIEW_SCORE, "critical": True, "contact": True}
+DEFAULT_RULES = {"score": REVIEW_SCORE, "critical": False, "contact": False}
 USER = "user"                     # who checked it, for a check made on the User page
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 CLEAN_EVERY = 600                 # seconds: cleanup_files() runs at most this often per store (see maybe_cleanup)
@@ -522,8 +522,8 @@ def facts_of(row):
 
 
 def reasons_for(facts, rules=None):
-    """Why the team should look at this check, under the rules (settings): a score under `score`, a Critical
-    issue, no email or no phone."""
+    """Why the team should look at this check, under the rules (settings): a score under `score` (the only
+    default trigger), and when switched on: a Critical issue, no email or no phone."""
     rules = rules or DEFAULT_RULES
     out = []
     if facts.get("score") is not None and facts["score"] < rules["score"]:
@@ -536,7 +536,8 @@ def reasons_for(facts, rules=None):
 
 
 def review_reasons(r, cards, rules=None):
-    """Why the team should look at this check: by default a score under 55, a Critical issue, no email or no phone."""
+    """Why the team should look at this check: by default only a score under 55 (a Critical issue and a missing
+    email or phone are options in Settings)."""
     return reasons_for(review_facts(r, cards), rules)
 
 

@@ -39,7 +39,8 @@ def setting(key):
 
 
 def review_rules():
-    """The "Needs review" rules of now (Settings): a score under N, any Critical issue, a missing email or phone."""
+    """The "Needs review" rules of now (Settings): a score under N (the only default trigger); a Critical issue
+    and a missing email or phone are options the team can switch on."""
     saved = store().saved_settings()
     return {"score": S.get("review_score", saved), "critical": S.get("review_critical", saved),
             "contact": S.get("review_contact", saved)}

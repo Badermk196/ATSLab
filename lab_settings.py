@@ -29,8 +29,8 @@ _TYPES = {
     "file_days": (int, 30),
     "daily_checks": (int, 3),
     "review_score": (int, 55),          # "Needs review": a score under this ...
-    "review_critical": (bool, True),    # ... a Critical issue ...
-    "review_contact": (bool, True),     # ... no email or no phone
+    "review_critical": (bool, False),   # ... or a Critical issue (off: only a low score flags)
+    "review_contact": (bool, False),    # ... or no email or no phone (off by default)
     "premium_url": (str, "https://1000jobs.club"),
     "booking_url": (str, "https://1000jobs.club"),
     "site_url": (str, "https://1000jobs.club"),
