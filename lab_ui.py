@@ -2,8 +2,9 @@
 The look of the app (Admin page and User page), from the design "1000Jobs ATS Lab Redesign" (7 pages): one palette,
 the same cards, rounded corners, spacing, buttons and colors everywhere, light and dark mode.
 
-- CSS: the palette is a set of CSS variables (--a-...), with a dark version used when the system is in dark mode
-  (Streamlit follows the same system setting: .streamlit/config.toml has a [theme.light] and a [theme.dark]).
+- CSS: the palette is a set of CSS variables (--a-...), with a dark version. The version is chosen from the app's own
+  theme (Streamlit's setting, st.context.theme), and the system's dark mode is only the fallback when it cannot be read
+  (.streamlit/config.toml has a [theme.light] and a [theme.dark]).
 - Streamlit parts are styled by their keys: a container whose key starts with "card" is a card, "nav_<view>" is a
   sidebar item, "topbar" is the white bar of the User page, and so on.
 - HTML helpers (esc, pill, tag, avatar, ring, stat cards ...) build the small pieces every page uses.
@@ -11,6 +12,7 @@ No Streamlit call here (the pages inject CSS with st.markdown), so it can be tes
 """
 
 import html
+import re
 
 FONT_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
 FONT = '"Inter", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif'
@@ -56,6 +58,35 @@ PALETTE = """
   }
 }
 """
+
+# The same two palettes, read back from PALETTE so the values live in one place only: the light one and the dark one.
+_VAR = re.compile(r"--a-[a-z0-9-]+\s*:[^;]+;")
+_LIGHT_PART, _DARK_PART = PALETTE.split("@media (prefers-color-scheme: dark)")
+LIGHT_VARS = "".join(_VAR.findall(_LIGHT_PART))
+DARK_VARS = "".join(_VAR.findall(_DARK_PART))
+
+
+def theme_kind():
+    """The app's own theme: "light" or "dark", read from Streamlit's setting (the visitor's choice in the app menu).
+    None when it cannot be read (outside a running app), so the system's own dark mode is used, as before."""
+    try:
+        import streamlit as st
+        kind = getattr(st.context.theme, "type", None)
+    except Exception:
+        return None
+    return kind if kind in ("light", "dark") else None
+
+
+def theme_css():
+    """The palette that matches the app's own theme. The system's dark mode is not enough: a visitor can set the app
+    to dark while the computer stays light, and the cards then came out white on a dark page. Empty when the theme
+    cannot be read, so PALETTE's own rule stays in charge."""
+    kind = theme_kind()
+    if kind == "dark":
+        return "\n:root {" + DARK_VARS + "}"
+    if kind == "light":
+        return "\n:root {" + LIGHT_VARS + "}"
+    return ""
 
 BASE = """
 /* The page must never jump sideways: while a view is short there is no scroll bar, and a long list makes one appear
@@ -113,8 +144,11 @@ header[data-testid="stHeader"] {background: transparent; pointer-events: none;}
 .stApp [data-testid="stBaseButton-tertiary"]:hover {color: var(--a-pri-2);}
 
 /* cards: every container whose key starts with "card" */
-.stApp [class*="st-key-card"] {background: var(--a-card); border: 1px solid var(--a-line); border-radius: 16px;
-  padding: 22px 24px; box-shadow: var(--a-shadow);}
+.stApp [class*="st-key-card"] {background: var(--a-card) !important; border: 1px solid var(--a-line) !important;
+  border-radius: 16px; padding: 22px 24px; box-shadow: var(--a-shadow);}
+/* the boxes inside a card keep the card's color, never Streamlit's own white panel */
+.stApp [class*="st-key-card"] > div, .stApp [class*="st-key-card"] [data-testid="stVerticalBlockBorderWrapper"] {
+  background: transparent; border-color: var(--a-line);}
 .stApp [class*="st-key-card"] h3, .a-h3 {font-size: 1.12rem; font-weight: 700; margin: 0; padding: 0;
   color: var(--a-text); letter-spacing: -.2px;}
 .a-sub {color: var(--a-muted); font-size: .9rem; margin: 2px 0 0 0;}
@@ -549,8 +583,10 @@ section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [da
 
 
 def css(*parts, extra=""):
-    """The page's <style>: Inter, the palette, the base rules, the page's own rules and `extra`."""
-    return f'<style>@import url("{FONT_URL}");' + PALETTE + BASE + "".join(parts) + extra + "</style>"
+    """The page's <style>: Inter, the palette (the app's own theme first), the base rules, the page's own rules and
+    `extra`."""
+    return (f'<style>@import url("{FONT_URL}");' + PALETTE + theme_css() + BASE
+            + "".join(parts) + extra + "</style>")
 
 
 def css_text(text):
