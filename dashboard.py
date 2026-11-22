@@ -1329,6 +1329,66 @@ body {background: #f3f5f9; margin: 0; padding: 24px;}
 }
 """
 # Streamlit's own containers
+# The report's own colors are light (white cards) because the downloadable PDF and the saved HTML are always
+# printed on white paper. Inside the app, when the visitor uses the dark theme, the same cards are drawn in the
+# app's dark palette instead: the cards must never be white on a dark page. The exported report keeps the light
+# colors, so the PDF still prints cleanly.
+REPORT_DARK_CSS = """
+.stApp .rp {color: #e5e7eb;}
+.stApp .rp .card, .stApp .rp .pill, .stApp .rp details.iss, .stApp .rp details.more > summary,
+.stApp .rp .ci, .stApp .rp .imv, .stApp .rp .fx {background: #131a2b; border-color: #263049; color: #e5e7eb;}
+.stApp .rp .rh {border-bottom-color: #263049;}
+.stApp .rp .rh h1, .stApp .rp .count b, .stApp .rp .wf b, .stApp .rp .it .t,
+.stApp .rp .cmp .who {color: #e5e7eb;}
+.stApp .rp .rm dt, .stApp .rp .tag, .stApp .rp .sub, .stApp .rp .muted, .stApp .rp .cap,
+.stApp .rp .scale, .stApp .rp .also, .stApp .rp .row.small, .stApp .rp .it .m,
+.stApp .rp .barlbl, .stApp .rp .lead, .stApp .rp .plain, .stApp .rp .fx .x span,
+.stApp .rp .cmp .file, .stApp .rp table.pt th {color: #9ca3af;}
+.stApp .rp .bar {background: #1d2539;}
+.stApp .rp .sep, .stApp .rp .ib, .stApp .rp .ci .ib, .stApp .rp table.pt td,
+.stApp .rp table.pt th {border-color: #1d2539;}
+.stApp .rp .num {background: #1f2937; color: #e5e7eb;}
+.stApp .rp .num.Important {background: rgba(245,158,11,.16); color: #fcd34d;}
+.stApp .rp .num.Critical {background: rgba(239,68,68,.16); color: #fca5a5;}
+.stApp .rp .gain {background: rgba(34,197,94,.16); color: #86efac;}
+.stApp .rp .gain.wait {background: #1f2937; color: #9ca3af;}
+.stApp .rp .switch span.on {background: #1f2937; color: #e5e7eb;}
+.stApp .rp .wf > div {background: #1d2539; color: #cbd5e1;}
+.stApp .rp .code.aft {background: rgba(34,197,94,.12); color: #bbf7d0; border-color: rgba(34,197,94,.35);}
+.stApp .rp .code .new {background: rgba(34,197,94,.2);}
+.stApp .rp .chip {background: rgba(99,102,241,.16); color: #c7d2fe;}
+.stApp .rp .chip.req {background: rgba(239,68,68,.16); color: #fca5a5;}
+.stApp .rp .note {background: rgba(245,158,11,.14); color: #fcd34d;}
+.stApp .rp .count {border-color: #263049; color: #cbd5e1;}
+.stApp .rp .ok {color: #86efac;}
+.stApp .rp .row .pt b {color: #fca5a5;}
+.stApp .rp .row .pt span {color: #86efac;}
+.stApp .rp .big, .stApp .rp .barlbl .aft, .stApp .rp .blk {color: #fcd34d;}
+.stApp .rp .count.c-imp b {color: #fcd34d;}
+.stApp .rp .count.c-crit b {color: #fca5a5;}
+.stApp .rp .count.c-gain b {color: #86efac;}
+.stApp .rp .imv .chd {color: #cbd5e1;}
+.stApp .rp .imv .chd b {color: #86efac;}
+.stApp .rp .imp .why {background: #0f172a; border-color: #263049; color: #e5e7eb;}
+"""
+
+
+def dark_theme():
+    """Whether the visitor is using the app's dark theme. False when it cannot be read (light stays the default)."""
+    try:
+        th = st.context.theme
+        kind = (th.get("type") or th.get("base")) if isinstance(th, dict) \
+            else (getattr(th, "type", None) or getattr(th, "base", None))
+        if kind in ("light", "dark"):
+            return kind == "dark"
+    except Exception:
+        pass
+    try:
+        return st.get_option("theme.base") == "dark"
+    except Exception:
+        return False
+
+
 FONT_URL = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
 BLUE, BLUE_DARK = "#1d4ed8", "#1e40af"
 PAGE_CSS = """
@@ -2602,7 +2662,7 @@ def main(after_check=None, page_config=True, below_top=None, gate=None):
     if not st.session_state.get("temp_cleaned"):     # once per session: old left-over temp files
         clean_temp()
         st.session_state["temp_cleaned"] = True
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(CSS + (REPORT_DARK_CSS if dark_theme() else ""), unsafe_allow_html=True)
     saved = st.session_state.get("result") if isinstance(st.session_state.get("result"), dict) else None
     if saved and "mode" not in st.session_state:             # the switch shows how the result was made
         st.session_state["mode"] = WITH_JOB if saved.get("with_job") else WITHOUT_JOB
