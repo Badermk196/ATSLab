@@ -440,12 +440,12 @@ def again_card(mode, saved, who):
 
 
 # ---------------------------------------------------------------------------
-# Second opinion (Admin page only): two extra ATS checkers beside the Lab score
+# Second opinion (Admin page only): three extra ATS checkers beside the Lab score
 # ---------------------------------------------------------------------------
 # They read the Lab's own numbers and never change them (lab_second.py). Each card is empty until the team
-# presses its button, and both checkers run on this device: no resume leaves the computer.
+# presses its button, and all three run on this device: no resume leaves the computer.
 SECOND_TEXT = T.SECOND_TEXT
-SECOND_SETTINGS = {"matcher": "second_matcher", "checker2": "second_checker2"}
+SECOND_SETTINGS = {"matcher": "second_matcher", "checker2": "second_checker2", "engine": "second_engine"}
 SECOND_TONE = {"Agrees": "a-ok", "Higher": "a-info", "Lower": "a-warn"}
 
 
@@ -466,7 +466,8 @@ def second_run(saved, checker, job_text, key):
     """Run one checker now (the team pressed the button) and keep its answer for this resume."""
     with st.spinner(SECOND_TEXT["checking"]):
         out = SO.run(checker, saved.get("res") or {}, job_text,
-                     {"matcher": second_on("matcher"), "checker2": second_on("checker2")})
+                     {"matcher": second_on("matcher"), "checker2": second_on("checker2"),
+                      "engine": second_on("engine")})
         out = SO.finish(checker, saved.get("res") or {}, out)
         out["checked_at"] = H.now().strftime(H.TIME_FORMAT)
     st.session_state[key] = out
@@ -488,7 +489,11 @@ def read_line(checker, answer):
     if checker == "matcher":
         if answer.get("source") == "role":          # a general check: the skills of the resume's own role
             return SECOND_TEXT["read_role"].format(role=answer.get("role") or "")
+        if answer.get("source") == "skills":        # a general check with no role either: the resume's own skills
+            return SECOND_TEXT["read_skills"]
         return SECOND_TEXT["read_job"]
+    if checker == "engine":
+        return SECOND_TEXT["read_engine"].format(version=SO.E.VERSION)
     checks = answer.get("checks") or []
     passed = sum(1 for c in checks if c.get("passed"))
     return SECOND_TEXT["read_checks"].format(passed=passed, total=len(checks)) if checks else ""
@@ -514,10 +519,15 @@ def second_card(saved, checker, job_text):
                 st.rerun()
             return
         state = answer.get("state")
-        if state in (SO.CHECKING, SO.NEEDS_JOB, SO.FAILED):
+        if state in (SO.CHECKING, SO.NEEDS_JOB, SO.FAILED, SO.UNAVAILABLE):
+            no_text = answer.get("why") == "no_text"
             st.markdown(f'<div class="so-state">{UI.esc(SECOND_TEXT[state])}</div>'
-                        + (f'<div class="so-note">{UI.esc(SECOND_TEXT["needs_job_hint"].format(name=name))}</div>'
+                        + (f'<div class="so-note">{UI.esc(SECOND_TEXT["no_text_hint"].format(name=name))}</div>'
+                           if no_text else
+                           f'<div class="so-note">{UI.esc(SECOND_TEXT["needs_job_hint"].format(name=name))}</div>'
                            if state == SO.NEEDS_JOB else
+                           f'<div class="so-note">{UI.esc(SECOND_TEXT["unavailable_hint"].format(name=name))}</div>'
+                           if state == SO.UNAVAILABLE else
                            f'<div class="so-note">{UI.esc(SECOND_TEXT["failed_hint"])}</div>'
                            if state == SO.FAILED else ""), unsafe_allow_html=True)
             if state != SO.CHECKING and st.button(SECOND_TEXT["again"], key=f"so_again_{checker}_{key}",
@@ -525,7 +535,7 @@ def second_card(saved, checker, job_text):
                 st.session_state[key] = {"state": SO.CHECKING}
                 st.rerun()
             return
-        general = answer.get("source") == "role"        # a general check: the Lab has no Job match to compare with
+        general = answer.get("source") in ("role", "skills")   # a general check: no Job match to compare with
         ref = (SECOND_TEXT["no_reference"] if general and info["compares"] == "job_match" else
                SECOND_TEXT["vs_job" if info["compares"] == "job_match" else "vs_score"].format(
                    n=answer.get("reference")))
@@ -537,9 +547,24 @@ def second_card(saved, checker, job_text):
             f'<div>{tag}<div class="so-lab" style="text-align:right">{UI.esc(ref)}</div></div></div>',
             unsafe_allow_html=True)
         st.markdown(f'<div class="so-note">{UI.esc(read_line(checker, answer))}</div>', unsafe_allow_html=True)
-        if checker == "matcher":                    # the keyword match, and what a keyword ATS would miss
+        if checker == "engine":                     # the open-source checker: its job match and failed checks
+            job_match = answer.get("job_match")
+            failed = len(answer.get("checks") or [])
+            total = answer.get("n_total") or 0
+            extra = []
+            if job_match is not None:
+                extra.append(SECOND_TEXT["engine_job_match"].format(n=job_match))
+            if total:
+                extra.append(SECOND_TEXT["engine_checks"].format(failed=failed, total=total))
+            if extra:
+                st.markdown(f'<div class="so-note">{UI.esc(" · ".join(extra))}</div>', unsafe_allow_html=True)
+            if answer.get("missing"):
+                st.markdown(f'<div class="so-note">'
+                            f'{UI.esc(SECOND_TEXT["engine_missing"].format(list=", ".join(answer["missing"])))}'
+                            f'</div>', unsafe_allow_html=True)
+        elif checker == "matcher":                  # the keyword match, and what a keyword ATS would miss
             pct = answer.get("pct") or 0
-            with_job = answer.get("source") != "role"
+            with_job = answer.get("source", "job") == "job"
             st.markdown(f'<div class="so-kw"><b>{UI.esc(SECOND_TEXT["keywords" if with_job else "skills"])}</b>'
                         f'<span>{UI.esc(SECOND_TEXT["keywords_line" if with_job else "skills_line"].format(
                             n=answer.get("n_matched"), total=answer.get("total"), pct=pct))}'
@@ -564,7 +589,8 @@ def second_card(saved, checker, job_text):
 
 
 def second_opinion(saved):
-    """The whole section: its title, the two cards, and the note that it never changes the Lab score."""
+    """The whole section: its title, the three cards, the benchmark and the note that it never changes
+    the Lab score."""
     job_text = (saved.get("inputs") or {}).get("text") or ""
     answers = {c: st.session_state.get(second_key(saved, c)) for c in SO.ORDER}
     head = SO.headline(answers)
@@ -573,11 +599,41 @@ def second_opinion(saved):
         f'{UI.esc(SECOND_TEXT["title"])}</span><span class="so-sub">{UI.esc(SECOND_TEXT["sub"])}</span></div>'
         + (f'<div class="so-head-right{" grey" if not head.startswith("Both") else ""}">{UI.esc(head)}</div>'
            if head else "") + "</div>", unsafe_allow_html=True)
-    cols = st.columns(2, gap="medium")
+    cols = st.columns(len(SO.ORDER), gap="medium")
     for col, checker in zip(cols, SO.ORDER):
         with col:
             second_card(saved, checker, job_text)
+    benchmark(saved, answers)
     st.markdown(f'<div class="so-section-note">{UI.esc(SECOND_TEXT["note"])}</div>', unsafe_allow_html=True)
+
+
+def benchmark(saved, answers):
+    """The same resume, the three checkers side by side. Read-only: the Lab's own row is the score the
+    report already shows, and nothing here changes it."""
+    res = saved.get("res") or {}
+    rows = [(SECOND_TEXT["bench_lab"], round(res.get("score") or 0), SO.label_for(res.get("score")),
+             SECOND_TEXT["bench_lab_note"])]
+    for checker in SO.ORDER:
+        answer = answers.get(checker) or {}
+        if answer.get("state") != SO.DONE or answer.get("score") is None:
+            continue
+        info = SO.CHECKERS[checker]
+        ref = answer.get("reference")
+        against = (f"{answer.get('difference')}" if answer.get("word") else
+                   (f"vs {ref}" if ref is not None else "no comparison"))
+        rows.append((info["name"], round(answer.get("score")),
+                     SO.label_for(answer.get("score")), against))
+    if len(rows) < 2:                     # nothing to compare yet: no empty table
+        return
+    st.markdown(f'<div class="so-bench-head"><b>{UI.esc(SECOND_TEXT["bench_title"])}</b>'
+                f'<span>{UI.esc(SECOND_TEXT["bench_sub"])}</span></div>', unsafe_allow_html=True)
+    cols = SECOND_TEXT["bench_cols"]
+    head = "".join(f"<th>{UI.esc(c)}</th>" for c in cols[:4])
+    body = "".join("<tr>" + "".join(f"<td>{UI.esc(str(v))}</td>" for v in row[:4]) + "</tr>" for row in rows)
+    st.markdown(
+        '<table class="so-bench" style="width:100%;border-collapse:collapse;font-size:0.86rem;margin:4px 0 2px">'
+        f'<thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>',
+        unsafe_allow_html=True)
 
 
 def training_hooks(who):
@@ -1077,6 +1133,7 @@ def settings_view(who):
                             f'{ADMIN_TEXT["second_sub"]}</p>', unsafe_allow_html=True)
                 values["second_matcher"] = setting_row("second_matcher", "toggle", saved)
                 values["second_checker2"] = setting_row("second_checker2", "toggle", saved)
+                values["second_engine"] = setting_row("second_engine", "toggle", saved)
             with st.container(key="card-set-links"):
                 st.markdown(f'<div class="a-h3">{ADMIN_TEXT["links_title"]}</div><p class="a-sub">'
                             f'{ADMIN_TEXT["links_sub"]}</p>', unsafe_allow_html=True)

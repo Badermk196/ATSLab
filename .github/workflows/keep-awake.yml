@@ -1,0 +1,41 @@
+name: Keep the ATS Lab awake
+
+# Streamlit Community Cloud puts the app to sleep after about 12 hours without a visitor.
+# This job opens the app in a headless browser every 4 hours and clicks the wake-up button when
+# the sleep page appears. It only opens the public address: no resume, password or token is used.
+#
+# Short term only. The long-term fix is Render (never sleeps, keeps the history): see DEPLOY.md.
+
+on:
+  schedule:
+    # every 4 hours, at :17 (GitHub delays scheduled jobs at busy times; the exact minute is not important)
+    - cron: "17 */4 * * *"
+  workflow_dispatch: {}        # a manual run from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-awake
+  cancel-in-progress: false
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --quiet playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Open the app and wake it up if needed
+        env:
+          ATSLAB_URL: https://1000jobs-atslab.streamlit.app
+        run: python .github/scripts/keep_awake.py

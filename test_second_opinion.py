@@ -164,18 +164,18 @@ class TestTheCheckers(unittest.TestCase):
 
 
 class TestTheSettings(unittest.TestCase):
-    def test_the_two_switches_exist_and_are_on_by_default(self):
-        for key in ("second_matcher", "second_checker2"):
+    def test_the_three_switches_exist_and_are_on_by_default(self):
+        for key in ("second_matcher", "second_checker2", "second_engine"):
             self.assertIn(key, S.SETTINGS)
             self.assertIn(key, T.SETTINGS_TEXT)
             self.assertTrue(S.SETTINGS[key][1])
             self.assertFalse(S.get(key, {key: False}), "a saved off switch wins")
 
-    def test_the_settings_view_shows_both_switches(self):
+    def test_the_settings_view_shows_all_three_switches(self):
         with open(os.path.join(HERE, "admin_page.py"), encoding="utf-8") as fh:
             source = fh.read()
         view = source[source.index("def settings_view(who):"):]
-        for key in ("second_matcher", "second_checker2"):
+        for key in ("second_matcher", "second_checker2", "second_engine"):
             self.assertIn(f'setting_row("{key}"', view)
 
 
@@ -185,12 +185,13 @@ class TestTheCards(unittest.TestCase):
         self.assertFalse(at.exception, at.exception)
         body = page_text(at)
         self.assertIn("Second opinion", body)
-        self.assertIn("2 extra ATS checkers", body)
+        self.assertIn("3 extra ATS checkers", body)
         self.assertIn("Second opinions are for comparison only", body)
         self.assertIn("change the ATS Lab score.", body)
         self.assertIn("Not checked yet", body)
         self.assertIn("Check with Resume Matcher", [b.label for b in at.button])
         self.assertIn("Check with ATS Checker 2", [b.label for b in at.button])
+        self.assertIn("Check with ATS Checker 3", [b.label for b in at.button])
 
     def test_pressing_the_button_runs_the_checker(self):
         at = AppTest.from_function(second_page, default_timeout=300).run()
@@ -248,6 +249,54 @@ class TestTheCards(unittest.TestCase):
             user = fh.read()
         self.assertNotIn("second_opinion", user, "the user page never draws the section")
         self.assertNotIn("after_score", user)
+
+
+class TestWorkingWithoutAJobDescription(unittest.TestCase):
+    """The second opinion must work with and without a job description, and never answer 0 by accident."""
+
+    RESUME = ("Sample Candidate\nDubai, United Arab Emirates\n"
+              "SKILLS\nStakeholder management, release management, agile delivery, reporting\n"
+              "EXPERIENCE\nRelease Manager 2020 - 2024\nRan release management and reporting for 4 teams.\n")
+
+    def res(self, text=RESUME):
+        return {"score": 46, "label": "At risk", "target": "Release Manager",
+                "parts": {"job_match": 40}, "_doc": {"modern": text}}
+
+    def test_with_a_job_description_it_reads_the_job(self):
+        out = SO.run_matcher(self.res(), JOB_TEXT)
+        self.assertEqual(out["source"], "job")
+        self.assertGreater(out["score"], 0)
+
+    def test_without_a_job_description_it_reads_the_resume_skills(self):
+        """No job, no known role: the matcher measures the resume's own skills instead of refusing."""
+        out = SO.run_matcher(self.res(), "")
+        self.assertIn(out["source"], ("skills", "role"))
+        self.assertNotIn("error", out)
+
+    def test_the_skills_check_does_not_match_the_list_against_itself(self):
+        """The skills list must be measured against the experience, not read back from itself."""
+        text = ("Sample Candidate\nSKILLS\nStakeholder management, release management\n"
+                "EXPERIENCE\nCashier 2019 - 2021\nHandled payments and stock.\n")
+        out = SO.run_matcher(self.res(text), "")
+        self.assertEqual(out["source"], "skills")
+        self.assertLess(out["score"], 100, "a skill that only sits in the list is not demonstrated")
+
+    def test_a_result_without_text_fails_cleanly(self):
+        """A saved result may not keep the resume text: the card says so instead of showing 0."""
+        out = SO.run("matcher", {"score": 46, "cv": "Someone_CV.pdf"}, "", {})
+        self.assertEqual(out["state"], SO.FAILED)
+        self.assertEqual(out["why"], "no_text")
+
+    def test_the_file_name_is_never_used_as_resume_text(self):
+        self.assertEqual(SO.text_of({"cv": "Sana_Malik_CV.pdf"}), "")
+        self.assertEqual(SO.text_of({"cv": "Sana_Malik_CV.pdf", "_doc": {"modern": "real text here"}}),
+                         "real text here")
+
+    def test_checker2_also_reads_a_saved_result(self):
+        """ATS Checker 2 used _doc only, so a saved result scored low for the wrong reason."""
+        out = SO.run_checker2({"score": 46, "_doc": {"modern": self.RESUME}})
+        self.assertGreater(out["score"], 0)
+        self.assertTrue(out["checks"])
 
 
 if __name__ == "__main__":

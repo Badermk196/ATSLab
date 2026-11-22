@@ -68,13 +68,30 @@ DARK_VARS = "".join(_VAR.findall(_DARK_PART))
 
 def theme_kind():
     """The app's own theme: "light" or "dark", read from Streamlit's setting (the visitor's choice in the app menu).
-    None when it cannot be read (outside a running app), so the system's own dark mode is used, as before."""
+    None when it cannot be read (outside a running app), so the system's own dark mode is used, as before.
+
+    st.context.theme is a mapping (a TypedDict), so it must be read with .get(). Reading it with getattr() always
+    returned None, which is why the cards stayed white on a dark page: the code fell back to the operating system's
+    theme instead of the app's own one."""
     try:
         import streamlit as st
-        kind = getattr(st.context.theme, "type", None)
     except Exception:
         return None
-    return kind if kind in ("light", "dark") else None
+    try:
+        th = st.context.theme
+        kind = (th.get("type") or th.get("base")) if isinstance(th, dict) \
+            else (getattr(th, "type", None) or getattr(th, "base", None))
+        if kind in ("light", "dark"):
+            return kind
+    except Exception:
+        pass
+    try:                                    # the saved setting in .streamlit/config.toml
+        base = st.get_option("theme.base")
+        if base in ("light", "dark"):
+            return base
+    except Exception:
+        pass
+    return None
 
 
 def theme_css():

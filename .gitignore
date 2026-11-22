@@ -1,4 +1,4 @@
-﻿# Never put these in a code repository: secrets, real resumes, the history database, results.
+# Never put these in a code repository: secrets, real resumes, the history database, results.
 # The private folders below hold real user data (resumes, reports, job descriptions, AI reviews):
 # they must never be committed, packed or uploaded.
 .streamlit/secrets.toml
@@ -47,6 +47,9 @@ golden_candidates.json
 riyaj-portfolio/
 # the Manus session folder
 .manus/
+# the open-source checker's local install: the licence stays in vendor/ats-engine/licence, and the
+# server installs the package itself, so the downloaded files are never committed
+vendor/ats-engine/node_modules/
 
 deploy/cloud/atslab-deploy.tar.gz
 deploy/cloud/atslab-deploy.tar.gz

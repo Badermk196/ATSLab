@@ -49,3 +49,5 @@ golden_extra/
 .git/
 .manus/
 *.tar.gz
+# the open-source checker's local install: the image installs the package itself
+vendor/ats-engine/node_modules/

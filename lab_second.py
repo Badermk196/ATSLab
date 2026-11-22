@@ -22,6 +22,7 @@ from collections import Counter
 
 import ATSLab_v3 as L
 import cv_score as C
+import lab_third as E
 
 # --- the two checkers -------------------------------------------------------------------------------
 # key -> name, sub-line, what it is compared with ("job_match" or "score"), and its short unit
@@ -30,14 +31,17 @@ CHECKERS = {
                 "unit": "Keyword match"},
     "checker2": {"name": "ATS Checker 2", "sub": "General score", "compares": "score",
                  "unit": "General score"},
+    "engine": {"name": "ATS Checker 3", "sub": "Open-source checker", "compares": "score",
+               "unit": "Readiness score"},
 }
-ORDER = ("matcher", "checker2")
+ORDER = ("matcher", "checker2", "engine")
 
 # --- states the card can be in ----------------------------------------------------------------------
 EMPTY = "empty"                 # nothing checked yet: the card shows its button
 CHECKING = "checking"           # a check is running
 DONE = "done"                   # a number to show
 FAILED = "failed"               # the checker could not answer: "Not available right now"
+UNAVAILABLE = "unavailable"     # the checker is not installed on this server
 NEEDS_JOB = "needs_job"         # the checker needs a job description and there is none
 OFF = "off"                     # switched off in Settings
 
@@ -105,7 +109,7 @@ def finish(checker, res, answer):
     -> the same answer with "reference", "difference", "word" and "agree" added."""
     if answer.get("state") != DONE:
         return answer
-    if answer.get("source") == "role":          # a general check has no Lab Job match to compare with
+    if answer.get("source") in ("role", "skills"):   # a general check has no Lab Job match to compare with
         return dict(answer, reference=None, difference="", word="", agree=None)
     ref = reference_of(res, checker)
     d = difference(answer.get("score"), ref)
@@ -120,6 +124,88 @@ def top_missing(answer, limit=MAX_MISSING_SHOWN):
 def stems_of(text):
     """Every stem in a text, once: the word set a word-by-word match is checked against."""
     return {L.stem(t) for t in L.tokens(text or "")}
+
+
+def text_of(res):
+    """The resume's own text, read from whichever copy the result carries.
+
+    A saved result does not always keep _doc (the history table stores the score and the report, not the whole
+    document), and the old code then fell back to res["cv"], which is the FILE NAME. That is how a checker could
+    answer 0 for a resume that scored 46. The file name is never used as text."""
+    doc = res.get("_doc") or {}
+    if isinstance(doc, dict):
+        for key in ("modern", "strict", "text", "clean"):
+            part = doc.get(key)
+            if isinstance(part, str) and part.strip():
+                return part
+        rows = doc.get("rows")
+        if isinstance(rows, list):
+            joined = "\n".join(str((r or {}).get("text") or "") for r in rows if isinstance(r, dict))
+            if joined.strip():
+                return joined
+    for key in ("text", "cv_text", "plain"):
+        part = res.get(key)
+        if isinstance(part, str) and len(part.strip()) > 40:      # a real text, not a file name
+            return part
+    return ""
+
+
+def skills_from_cv(res, limit=25):
+    """The skills the resume itself lists: what a general check measures against when there is no job
+    description and no known role. Read from the SKILLS section, else from the skills the Lab already found."""
+    text = text_of(res)
+    found = []
+    if text:
+        inside = False
+        for line in text.splitlines():
+            head = " ".join(line.split()).strip().lower()
+            if head in ("skills", "core skills", "key skills", "technical skills", "skills & tools",
+                        "skills and tools", "expertise", "core competencies", "skills summary"):
+                inside = True
+                continue
+            if inside:
+                if head and head.isupper() and len(head) > 3 and "," not in head:
+                    break                                  # the next section started
+                for part in re.split(r"[,|•·/;]", line):
+                    part = " ".join(part.split()).strip(" -–—:")
+                    if 2 <= len(part) <= 40:
+                        found.append(part)
+    if not found:
+        for key in ("skills", "hard_skills"):
+            value = res.get(key)
+            if isinstance(value, (list, tuple)):
+                found.extend(str(v) for v in value if str(v).strip())
+    seen, out = set(), []
+    for item in found:
+        low = item.lower()
+        if low not in seen:
+            seen.add(low)
+            out.append(item)
+    return out[:limit]
+
+
+SKILL_HEADS = ("skills", "core skills", "key skills", "skills & tools", "technical skills",
+               "core competencies", "expertise", "skills summary")
+
+
+def without_skills(text):
+    """The resume text with its SKILLS block removed. Used when the skills list itself is what we measure:
+    a skill only counts if the experience shows it, not because it is repeated in the list."""
+    lines = text.splitlines()
+    out, skipping = [], False
+    for line in lines:
+        stripped = line.strip()
+        low = stripped.lower().rstrip(":")
+        if low in SKILL_HEADS:
+            skipping = True
+            continue
+        if skipping:
+            if stripped and stripped.isupper() and len(stripped) < 40:      # the next section starts
+                skipping = False
+            else:
+                continue
+        out.append(line)
+    return "\n".join(out)
 
 
 def found(term, text, stems=None):
@@ -162,29 +248,42 @@ def role_words(role, limit=MAX_KEYWORDS):
 def matcher_words(res, job_text, role=None):
     """What the Resume Matcher measures against. -> (words, source, role)
 
-    With a job description: the job description's own words ("job"). Without one (a general check): the skills
-    the resume's own target role is expected to have ("role"). ([], "role", role) when that list cannot be read."""
+    Three levels, so the matcher works with and without a job description:
+      1. a job description was given        -> the job's own words        ("job")
+      2. no job, but the target role is known -> the role's expected skills ("role")
+      3. no job and no role                 -> the skills the resume lists ("skills")
+    ([], "none", "") only when there is nothing at all to measure against."""
     words = keywords_of(job_text)
     if words:
         return words, "job", ""
     named = (role or res.get("target") or "").strip()
-    if not named:
-        return [], "job", ""
-    try:
-        return role_words(named), "role", named
-    except Exception:                       # no key, and nothing saved for this role: the card says so
-        return [], "role", named
+    if named:
+        try:
+            words = role_words(named)
+            if words:
+                return words, "role", named
+        except Exception:                   # no key and nothing saved for this role: fall through to the resume
+            pass
+    words = skills_from_cv(res)
+    if words:
+        return words, "skills", ""
+    return [], "none", ""
 
 
 def run_matcher(res, job_text, role=None):
     """The Resume Matcher's answer. -> {"score", "label", "keywords", "matched", "missing", "total",
-    "n_matched", "pct", "source", "role"}   "source" says what it read: "job" or "role"."""
+    "n_matched", "pct", "source", "role"}   "source" says what it read: "job", "role" or "skills"."""
+    text = text_of(res)
+    if not text.strip():
+        return {"error": "no_text", "source": "none", "role": ""}
     words, source, named = matcher_words(res, job_text, role)
     if not words:
         return {"error": "no_job", "source": source, "role": named}
-    text = ((res.get("_doc") or {}).get("modern") or "") + "\n" + str(res.get("cv") or "")
-    stems = stems_of(text)
-    matched = [w for w in words if found(w, text, stems)]
+    # when the words come from the resume's own skills list, measure them against the experience only:
+    # otherwise a skill would always "match" because it is written in the list we just read.
+    body = without_skills(text) if source == "skills" else text
+    stems = stems_of(body)
+    matched = [w for w in words if found(w, body, stems)]
     missing = [w for w in words if w not in matched]
     pct = round(100 * len(matched) / len(words))
     return {"score": pct, "label": label_for(pct), "keywords": words, "matched": matched,
@@ -197,7 +296,7 @@ def _checks(res):
     """The signals ATS Checker 2 reads, each with its weight and its plain reason.
     -> [(name, passed, weight, why)]"""
     doc = res.get("_doc") or {}
-    text = doc.get("modern") or ""
+    text = text_of(res)
     low = text.lower()
     layout = res.get("layout") or {}
     pages = layout.get("pages") or 1
@@ -215,6 +314,9 @@ def _checks(res):
         "an email address is in the text" if re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text)
         else "no email address in the text")
     headings = sum(1 for r in rows if L.is_heading(r.get("text") or ""))
+    if not rows:                                  # a saved result has no rows: count the headings in the text
+        headings = sum(1 for line in text.splitlines()
+                       if line.strip() and line.strip().isupper() and 3 <= len(line.strip()) <= 40)
     add("Section headings", headings >= 3, 12, f"{headings} section heading(s)")
     dates = len(re.findall(r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}\b", low))
     add("Dates as Mon YYYY", dates >= 2, 12, f"{dates} date(s) written as Mon YYYY")
@@ -228,6 +330,8 @@ def _checks(res):
     add("No tables", not tables, 8, "text inside a table" if tables else "no tables")
     add("Length", 250 <= words <= 1200, 8, f"{words} words")
     bullets = sum(1 for r in rows if re.match(r"^\s*[•\-\u2022·▪◦]", r.get("text") or ""))
+    if not rows:
+        bullets = sum(1 for line in text.splitlines() if re.match(r"^\s*[•\-\u2022·▪◦]", line))
     add("Bullets", bullets >= 6, 6, f"{bullets} bullet(s)")
     return out
 
@@ -256,6 +360,8 @@ def run(checker, res, job_text="", settings=None):
             out = run_matcher(res, job_text, res.get("target"))
         except Exception as e:                  # a checker never breaks the Lab
             return {"state": FAILED, "why": type(e).__name__}
+        if out.get("error") == "no_text":        # the saved result carries no text: say so, never answer 0
+            return {"state": FAILED, "why": "no_text"}
         if out.get("error"):
             return {"state": NEEDS_JOB}
         return {"state": DONE, **out}
@@ -265,17 +371,24 @@ def run(checker, res, job_text="", settings=None):
         except Exception as e:
             return {"state": FAILED, "why": type(e).__name__}
         return {"state": DONE, **out}
+    if checker == "engine":
+        try:
+            out = E.run(text_of(res), job_text)
+        except Exception as e:                  # a checker never breaks the Lab
+            return {"state": FAILED, "why": type(e).__name__}
+        out["source"] = "engine"
+        return out
     return {"state": FAILED, "why": "unknown checker"}
 
 
 def headline(answers):
     """The line at the top right of the section, from the cards that have a number.
-    -> 'Both checkers agree with the Lab' | '1 of 2 checkers agree with the Lab' | '' """
+    -> 'All 3 checkers agree with the Lab' | '2 of 3 checkers agree with the Lab' | '' """
     done = [a for a in answers.values() if a and a.get("state") == DONE]
     judged = [a for a in done if a.get("agree") is not None]      # a general check's matcher: nothing to compare
     if not judged:
         return ""
     n = sum(1 for a in judged if a.get("agree"))
-    if n == len(judged) == 2:
-        return "Both checkers agree with the Lab"
+    if n == len(judged) and len(judged) >= 2:
+        return "Both checkers agree with the Lab" if len(judged) == 2 else f"All {len(judged)} checkers agree with the Lab"
     return f"{n} of {len(judged)} checker{'s' if len(judged) != 1 else ''} agree with the Lab"

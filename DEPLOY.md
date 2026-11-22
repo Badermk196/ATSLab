@@ -213,3 +213,76 @@ Since 4 November 2026 the Lab handles it itself:
   shown in the app. A wrong API key or a model that does not exist is not retried.
 
 So: **a red box about a busy AI means "press Run check again"** - nothing was scored and nothing was lost.
+
+---
+
+## ATS Checker 3 (the open-source checker) and keeping the app awake
+
+### ATS Checker 3: what it is and its licence
+`ATS Checker 3` is the third card of the Admin page's **Second opinion** section. It runs
+[VeriWorkly ats-engine](https://github.com/VeriWorkly/ats-engine), an open-source resume checker that reads a
+resume against a published rubric and prints a readiness score, a job-match score, the failed rules and the
+missing keywords.
+
+- **Licence: MIT.** It allows commercial and internal use, modification and redistribution, as long as the
+  copyright notice and the licence text travel with the code. They are in `vendor/ats-engine/licence/`
+  (`LICENSE` and `NOTICE`). No attribution is required in the user interface.
+- **It runs on our own server.** The engine is a local command (`ats-engine check ... --json`). The Lab writes
+  the already-extracted resume text to a temporary folder on the server, runs the command, reads the JSON and
+  deletes the folder. No resume, text or screenshot leaves the machine. The only network use is the one-time
+  `npm install` at build time.
+- **It cannot change the ATS Lab score.** The card only reads the Lab's own numbers. If the engine is missing,
+  crashes or times out, the card shows "Not installed on this server" or "Not available right now" and the
+  Lab report is unchanged.
+- **It only runs when the team presses its button.** Nothing runs on page load. It can be switched off in
+  **Settings**.
+
+### Switching it on
+On this Windows computer the engine is kept in `vendor/ats-engine/` (the folder is ignored by git because it
+holds the downloaded package). Install it once:
+
+```
+cd C:\ATSLab\vendor\ats-engine
+npm install @veriworkly/ats-engine
+```
+
+In the Docker image the engine is installed during the build (`npm install -g @veriworkly/ats-engine`), and
+Node 22 is copied into the image from the official `node:22-slim` image. Nothing else changes.
+
+If the engine is not installed, the third card says "Not installed on this server" and everything else works
+normally. To use a different copy, set the environment variable `ATSLAB_ATS_ENGINE` to the full path of the
+command.
+
+### Benchmark table
+Under the three cards the Admin page shows **Benchmark: the same resume, three checkers**: the ATS Lab score
+and each card's number, its label, and how far it sits from the Lab. It is read-only and never changes the
+score.
+
+### Keeping the app awake on Streamlit Cloud (short term)
+Streamlit Community Cloud puts an app to sleep after about 12 hours without a visitor. The workflow
+`.github/workflows/keep-awake.yml` opens the app in a headless browser every 4 hours and clicks
+"Yes, get this app back up!" when the sleep page appears (it also runs from the Actions tab with
+**Run workflow**). It needs no account and no secret.
+
+- The script is `.github/scripts/keep_awake.py`.
+- Change the address with the `ATSLAB_URL` environment variable in the workflow.
+- GitHub pauses scheduled workflows in a repository with no activity for 60 days; any push starts them again.
+- Scheduled runs can be delayed at busy times (usually a few minutes).
+
+### Moving to Render (long term: never sleeps, keeps the history)
+Render runs the Docker image and does not sleep, so the keep-awake workflow is no longer needed. What is needed:
+
+1. A **Web Service** from the GitHub repository, runtime **Docker**, branch `main`, using the existing
+   `Dockerfile`. The image already contains Node 22, the open-source checker, Chromium and the meaning-match
+   model.
+2. A **paid instance with at least 2 GB of memory** (the model and Chromium need it). The free instance is too
+   small and also sleeps.
+3. The secrets as a **Secret File** named `secrets.toml`, mounted at `/etc/secrets/secrets.toml`.
+   `run_app.py` copies it to `.streamlit/secrets.toml` before Streamlit starts. Nothing is printed.
+4. A **persistent disk mounted at `/data`** (start with 1 GB) and the environment variable
+   `ATSLAB_DATA_DIR=/data`, so the history, the resumes and the settings survive every deploy.
+5. Environment variable `PORT=8501` and the health check path `/_stcore/health`.
+6. **Auto-deploy** on every push to `main`.
+
+After the first deploy, check `/user` and `/admin`, then make one check and restart the service: the check must
+still be in the History. That proves the disk is mounted.

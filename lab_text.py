@@ -188,13 +188,16 @@ SETTINGS_TEXT = {
                        "Shows the second opinion card on the Admin page. It runs only when the team presses it."),
     "second_checker2": ("ATS Checker 2 card",
                         "Shows the second opinion card on the Admin page. It runs only when the team presses it."),
+    "second_engine": ("ATS Checker 3 card (open-source)",
+                      "Shows the open-source ats-engine card on the Admin page. It runs only when the team "
+                      "presses it, on this server, and never changes the ATS Lab score."),
 }
 DAYS = "{n} days"
 
 # Second opinion (Admin page only): two extra ATS checkers beside the Lab score. They read the Lab's own
 # numbers and never change them. Both run on this device: no resume leaves the computer.
 SECOND_TEXT = {
-    "title": "Second opinion", "sub": "2 extra ATS checkers",
+    "title": "Second opinion", "sub": "3 extra ATS checkers",
     "head_all": "Both checkers agree with the Lab",
     "head_some": "{n} of {total} checkers agree with the Lab",
     "head_none": "No checker agrees with the Lab",
@@ -208,6 +211,11 @@ SECOND_TEXT = {
     "needs_job_hint": "Check this resume with a job description to use {name}.",
     "failed": "Not available right now",
     "failed_hint": "The checker could not answer. The ATS Lab report is not affected.",
+    "unavailable": "Not installed on this server",
+    "unavailable_hint": "{name} needs Node.js and the open-source ats-engine package. The ATS Lab works "
+                        "normally without it. See DEPLOY.md to switch it on.",
+    "no_text": "No text to read",
+    "no_text_hint": "This saved result carries no text: check the resume again to use {name}.",
     "off": "Switched off in Settings",
     "off_hint": "Turn {name} on in Settings to use it.",
     "vs_job": "vs Lab Job match {n}", "vs_score": "vs Lab score {n}",
@@ -216,12 +224,23 @@ SECOND_TEXT = {
     # what each card read, so the number is never a mystery
     "read_job": "Read: the job description's own words.",
     "read_role": "Read: the skills a {role} role is expected to have (no job description was given).",
+    "read_skills": "Read: the resume's own skills list (no job description and no role were given).",
     "read_checks": "Read: this resume itself - {passed} of {total} checks passed.",
+    "read_engine": "Read: the resume text with the open-source ats-engine ({version}).",
+    "engine_job_match": "Job match {n}/100",
+    "engine_checks": "{failed} of {total} checks failed",
+    "engine_missing": "Missing keywords: {list}",
     "weakest": "Weakest: {list}",
     "no_reference": "no Job match in a general check",
     "skills": "Skills match",
     "skills_line": "{n} of {total} skills, {pct}%",
     "missing_skills": "Missing skills: {list}",
+    # the benchmark: the same resume, the three checkers side by side
+    "bench_title": "Benchmark: the same resume, three checkers",
+    "bench_sub": "Read-only. The ATS Lab score is the first row and never changes.",
+    "bench_cols": ("Checker", "Score", "Label", "Against the Lab", "What it read"),
+    "bench_lab": "ATS Lab (this app)",
+    "bench_lab_note": "the Lab's own score",
 }
 
 # the reasons a check needs review (also the rule names in the "Needs review" subtitle)
