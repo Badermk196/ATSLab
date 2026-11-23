@@ -23,6 +23,7 @@ from collections import Counter
 import ATSLab_v3 as L
 import cv_score as C
 import lab_third as E
+import lab_lever as V
 
 # --- the two checkers -------------------------------------------------------------------------------
 # key -> name, sub-line, what it is compared with ("job_match" or "score"), and its short unit
@@ -33,8 +34,10 @@ CHECKERS = {
                  "unit": "General score"},
     "engine": {"name": "ATS Checker 3", "sub": "Open-source checker", "compares": "score",
                "unit": "Readiness score"},
+    "lever": {"name": "LeverParser", "sub": "Open-source parser", "compares": "none",
+              "unit": "Parse score"},
 }
-ORDER = ("matcher", "checker2", "engine")
+ORDER = ("matcher", "checker2", "engine", "lever")
 
 # --- states the card can be in ----------------------------------------------------------------------
 EMPTY = "empty"                 # nothing checked yet: the card shows its button
@@ -109,7 +112,9 @@ def finish(checker, res, answer):
     -> the same answer with "reference", "difference", "word" and "agree" added."""
     if answer.get("state") != DONE:
         return answer
-    if answer.get("source") in ("role", "skills"):   # a general check has no Lab Job match to compare with
+    if answer.get("source") in ("role", "skills", "lever"):
+        # a general check has no Lab Job match to compare with, and a parse score is not an ATS score:
+        # neither is put beside the Lab's number.
         return dict(answer, reference=None, difference="", word="", agree=None)
     ref = reference_of(res, checker)
     d = difference(answer.get("score"), ref)
@@ -377,6 +382,12 @@ def run(checker, res, job_text="", settings=None):
         except Exception as e:                  # a checker never breaks the Lab
             return {"state": FAILED, "why": type(e).__name__}
         out["source"] = "engine"
+        return out
+    if checker == "lever":
+        try:
+            out = V.run(text_of(res))
+        except Exception as e:                  # a checker never breaks the Lab
+            return {"state": FAILED, "why": type(e).__name__}
         return out
     return {"state": FAILED, "why": "unknown checker"}
 

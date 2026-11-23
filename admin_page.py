@@ -440,13 +440,23 @@ def again_card(mode, saved, who):
 
 
 # ---------------------------------------------------------------------------
-# Second opinion (Admin page only): three extra ATS checkers beside the Lab score
+# Second opinion (Admin page only): four extra ATS checkers beside the Lab score
 # ---------------------------------------------------------------------------
 # They read the Lab's own numbers and never change them (lab_second.py). Each card is empty until the team
-# presses its button, and all three run on this device: no resume leaves the computer.
+# presses its button, and all four run on this device: no resume leaves the computer.
 SECOND_TEXT = T.SECOND_TEXT
-SECOND_SETTINGS = {"matcher": "second_matcher", "checker2": "second_checker2", "engine": "second_engine"}
+SECOND_SETTINGS = {"matcher": "second_matcher", "checker2": "second_checker2", "engine": "second_engine",
+                   "lever": "second_lever"}
 SECOND_TONE = {"Agrees": "a-ok", "Higher": "a-info", "Lower": "a-warn"}
+LEVER_TONE = {"read": "a-ok", "missed": "a-warn", "unclear": "a-info"}
+LEVER_MARK = {"read": "\u2713", "missed": "\u2717", "unclear": "~"}
+
+
+def unavailable_hint(checker, name):
+    """The "not installed on this server" note. LeverParser needs a pip package and the open-source checker
+    needs Node.js, so the two do not share one sentence."""
+    text = (SECOND_TEXT["unavailable_hint_lever"] if checker == "lever" else SECOND_TEXT["unavailable_hint"])
+    return text.format(name=name)
 
 
 def second_on(checker):
@@ -467,7 +477,7 @@ def second_run(saved, checker, job_text, key):
     with st.spinner(SECOND_TEXT["checking"]):
         out = SO.run(checker, saved.get("res") or {}, job_text,
                      {"matcher": second_on("matcher"), "checker2": second_on("checker2"),
-                      "engine": second_on("engine")})
+                      "engine": second_on("engine"), "lever": second_on("lever")})
         out = SO.finish(checker, saved.get("res") or {}, out)
         out["checked_at"] = H.now().strftime(H.TIME_FORMAT)
     st.session_state[key] = out
@@ -494,6 +504,8 @@ def read_line(checker, answer):
         return SECOND_TEXT["read_job"]
     if checker == "engine":
         return SECOND_TEXT["read_engine"].format(version=SO.E.VERSION)
+    if checker == "lever":
+        return SECOND_TEXT["read_lever"].format(version=SO.V.VERSION)
     checks = answer.get("checks") or []
     passed = sum(1 for c in checks if c.get("passed"))
     return SECOND_TEXT["read_checks"].format(passed=passed, total=len(checks)) if checks else ""
@@ -526,7 +538,7 @@ def second_card(saved, checker, job_text):
                            if no_text else
                            f'<div class="so-note">{UI.esc(SECOND_TEXT["needs_job_hint"].format(name=name))}</div>'
                            if state == SO.NEEDS_JOB else
-                           f'<div class="so-note">{UI.esc(SECOND_TEXT["unavailable_hint"].format(name=name))}</div>'
+                           f'<div class="so-note">{UI.esc(unavailable_hint(checker, name))}</div>'
                            if state == SO.UNAVAILABLE else
                            f'<div class="so-note">{UI.esc(SECOND_TEXT["failed_hint"])}</div>'
                            if state == SO.FAILED else ""), unsafe_allow_html=True)
@@ -536,14 +548,19 @@ def second_card(saved, checker, job_text):
                 st.rerun()
             return
         general = answer.get("source") in ("role", "skills")   # a general check: no Job match to compare with
-        ref = (SECOND_TEXT["no_reference"] if general and info["compares"] == "job_match" else
-               SECOND_TEXT["vs_job" if info["compares"] == "job_match" else "vs_score"].format(
-                   n=answer.get("reference")))
+        if info["compares"] == "none":            # a parse score is not an ATS score: nothing to compare with
+            ref = SECOND_TEXT["no_score_reference"]
+        elif general and info["compares"] == "job_match":
+            ref = SECOND_TEXT["no_reference"]
+        else:
+            ref = SECOND_TEXT["vs_job" if info["compares"] == "job_match" else "vs_score"].format(
+                n=answer.get("reference"))
         tag = (f'<span class="a-tag {SECOND_TONE.get(answer.get("word"), "a-grey")}">'
                f'{UI.esc(answer.get("difference") or "")}</span>') if answer.get("word") else ""
         st.markdown(
             f'<div class="so-top"><div><span class="so-big">{UI.esc(answer.get("score"))}</span>'
-            f'<span class="so-of">/100</span><div class="so-lab">{UI.esc(SO.label_for(answer.get("score")))}</div></div>'
+            f'<span class="so-of">/100</span><div class="so-lab">'
+            f'{UI.esc(answer.get("label") or SO.label_for(answer.get("score")))}</div></div>'
             f'<div>{tag}<div class="so-lab" style="text-align:right">{UI.esc(ref)}</div></div></div>',
             unsafe_allow_html=True)
         st.markdown(f'<div class="so-note">{UI.esc(read_line(checker, answer))}</div>', unsafe_allow_html=True)
@@ -575,6 +592,44 @@ def second_card(saved, checker, job_text):
                 st.markdown(f'<div class="so-note">'
                             f'{UI.esc(text.format(list=", ".join(SO.top_missing(answer))))}</div>',
                             unsafe_allow_html=True)
+        elif checker == "lever":                    # the open-source parser: what it read, field by field
+            fields = answer.get("fields") or []
+            tags = "".join(
+                f'<span class="a-tag {LEVER_TONE.get(f["state"], "a-grey")}" title="'
+                f'{UI.esc(SECOND_TEXT["lever_tag"].get(f["state"], ""))}">'
+                f'{UI.esc(LEVER_MARK.get(f["state"], ""))} {UI.esc(f["label"])}</span>' for f in fields)
+            if tags:
+                st.markdown(f'<div class="so-note" style="display:flex;flex-wrap:wrap;gap:6px">{tags}</div>',
+                            unsafe_allow_html=True)
+            shown = [f for f in fields if f["key"] in ("name", "email", "phone", "linkedin") and f["value"]]
+            if shown:
+                line = " \u00b7 ".join(f["label"] + ": " + f["value"] for f in shown)
+                st.markdown('<div class="so-note">' + UI.esc(line) + '</div>', unsafe_allow_html=True)
+            if answer.get("jobs"):
+                jobs = " | ".join(" - ".join(p for p in (j["title"], j["company"], j["dates"]) if p)
+                                  for j in answer["jobs"][:3])
+                st.markdown(f'<div class="so-note">{UI.esc(SECOND_TEXT["lever_jobs"].format(list=jobs))}</div>',
+                            unsafe_allow_html=True)
+            if answer.get("education"):
+                edu = " | ".join(" - ".join(p for p in (e["degree"], e["institution"], e["year"]) if p)
+                                 for e in answer["education"][:2])
+                st.markdown(f'<div class="so-note">{UI.esc(SECOND_TEXT["lever_education"].format(list=edu))}</div>',
+                            unsafe_allow_html=True)
+            st.markdown(f'<div class="so-note">'
+                        f'{UI.esc(SECOND_TEXT["lever_skills"].format(n=answer.get("n_skills") or 0))}</div>',
+                        unsafe_allow_html=True)
+            if answer.get("missed"):
+                st.markdown(f'<div class="so-note">'
+                            f'{UI.esc(SECOND_TEXT["lever_missed"].format(list=", ".join(answer["missed"])))}'
+                            f'</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="so-note">{UI.esc(SECOND_TEXT["lever_all_read"])}</div>',
+                            unsafe_allow_html=True)
+            if answer.get("unclear"):
+                st.markdown(f'<div class="so-note">'
+                            f'{UI.esc(SECOND_TEXT["lever_unclear"].format(list=", ".join(answer["unclear"])))}'
+                            f'</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="so-note">{UI.esc(SECOND_TEXT["lever_note"])}</div>', unsafe_allow_html=True)
         else:                                       # ATS Checker 2: say which of its own checks failed
             weak = [c["name"] for c in (answer.get("checks") or []) if not c.get("passed")]
             if weak:
@@ -1134,6 +1189,7 @@ def settings_view(who):
                 values["second_matcher"] = setting_row("second_matcher", "toggle", saved)
                 values["second_checker2"] = setting_row("second_checker2", "toggle", saved)
                 values["second_engine"] = setting_row("second_engine", "toggle", saved)
+                values["second_lever"] = setting_row("second_lever", "toggle", saved)
             with st.container(key="card-set-links"):
                 st.markdown(f'<div class="a-h3">{ADMIN_TEXT["links_title"]}</div><p class="a-sub">'
                             f'{ADMIN_TEXT["links_sub"]}</p>', unsafe_allow_html=True)

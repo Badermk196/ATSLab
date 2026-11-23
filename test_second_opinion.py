@@ -164,18 +164,18 @@ class TestTheCheckers(unittest.TestCase):
 
 
 class TestTheSettings(unittest.TestCase):
-    def test_the_three_switches_exist_and_are_on_by_default(self):
-        for key in ("second_matcher", "second_checker2", "second_engine"):
+    def test_the_four_switches_exist_and_are_on_by_default(self):
+        for key in ("second_matcher", "second_checker2", "second_engine", "second_lever"):
             self.assertIn(key, S.SETTINGS)
             self.assertIn(key, T.SETTINGS_TEXT)
             self.assertTrue(S.SETTINGS[key][1])
             self.assertFalse(S.get(key, {key: False}), "a saved off switch wins")
 
-    def test_the_settings_view_shows_all_three_switches(self):
+    def test_the_settings_view_shows_all_four_switches(self):
         with open(os.path.join(HERE, "admin_page.py"), encoding="utf-8") as fh:
             source = fh.read()
         view = source[source.index("def settings_view(who):"):]
-        for key in ("second_matcher", "second_checker2", "second_engine"):
+        for key in ("second_matcher", "second_checker2", "second_engine", "second_lever"):
             self.assertIn(f'setting_row("{key}"', view)
 
 
@@ -185,13 +185,14 @@ class TestTheCards(unittest.TestCase):
         self.assertFalse(at.exception, at.exception)
         body = page_text(at)
         self.assertIn("Second opinion", body)
-        self.assertIn("3 extra ATS checkers", body)
+        self.assertIn("4 extra ATS checkers", body)
         self.assertIn("Second opinions are for comparison only", body)
         self.assertIn("change the ATS Lab score.", body)
         self.assertIn("Not checked yet", body)
         self.assertIn("Check with Resume Matcher", [b.label for b in at.button])
         self.assertIn("Check with ATS Checker 2", [b.label for b in at.button])
         self.assertIn("Check with ATS Checker 3", [b.label for b in at.button])
+        self.assertIn("Check with LeverParser", [b.label for b in at.button])
 
     def test_pressing_the_button_runs_the_checker(self):
         at = AppTest.from_function(second_page, default_timeout=300).run()

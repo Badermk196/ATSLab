@@ -191,13 +191,16 @@ SETTINGS_TEXT = {
     "second_engine": ("ATS Checker 3 card (open-source)",
                       "Shows the open-source ats-engine card on the Admin page. It runs only when the team "
                       "presses it, on this server, and never changes the ATS Lab score."),
+    "second_lever": ("LeverParser card (open-source)",
+                     "Shows the open-source LeverParser card on the Admin page. It reads the resume text on "
+                     "this server and never changes the ATS Lab score."),
 }
 DAYS = "{n} days"
 
-# Second opinion (Admin page only): two extra ATS checkers beside the Lab score. They read the Lab's own
-# numbers and never change them. Both run on this device: no resume leaves the computer.
+# Second opinion (Admin page only): four extra ATS checkers beside the Lab score. They read the Lab's own
+# numbers and never change them. All four run on this device: no resume leaves the computer.
 SECOND_TEXT = {
-    "title": "Second opinion", "sub": "3 extra ATS checkers",
+    "title": "Second opinion", "sub": "4 extra ATS checkers",
     "head_all": "Both checkers agree with the Lab",
     "head_some": "{n} of {total} checkers agree with the Lab",
     "head_none": "No checker agrees with the Lab",
@@ -214,6 +217,8 @@ SECOND_TEXT = {
     "unavailable": "Not installed on this server",
     "unavailable_hint": "{name} needs Node.js and the open-source ats-engine package. The ATS Lab works "
                         "normally without it. See DEPLOY.md to switch it on.",
+    "unavailable_hint_lever": "{name} is not installed on this server. The ATS Lab works normally without "
+                              "it. To switch it on, run: pip install leverparser",
     "no_text": "No text to read",
     "no_text_hint": "This saved result carries no text: check the resume again to use {name}.",
     "off": "Switched off in Settings",
@@ -227,16 +232,26 @@ SECOND_TEXT = {
     "read_skills": "Read: the resume's own skills list (no job description and no role were given).",
     "read_checks": "Read: this resume itself - {passed} of {total} checks passed.",
     "read_engine": "Read: the resume text with the open-source ats-engine ({version}).",
+    "read_lever": "Read: the resume text with LeverParser ({version}).",
+    "lever_note": "A parse score says what this parser could read, not how good the resume is.",
+    "lever_jobs": "Jobs: {list}",
+    "lever_education": "Education: {list}",
+    "lever_skills": "Skills read: {n}",
+    "lever_missed": "Missed: {list}",
+    "lever_all_read": "It read every field it is checked for.",
+    "lever_unclear": "Not found in the resume text: {list}",
+    "lever_tag": {"read": "read", "missed": "missed", "unclear": "not in the text"},
     "engine_job_match": "Job match {n}/100",
     "engine_checks": "{failed} of {total} checks failed",
     "engine_missing": "Missing keywords: {list}",
     "weakest": "Weakest: {list}",
     "no_reference": "no Job match in a general check",
+    "no_score_reference": "a parse score, not an ATS score",
     "skills": "Skills match",
     "skills_line": "{n} of {total} skills, {pct}%",
     "missing_skills": "Missing skills: {list}",
-    # the benchmark: the same resume, the three checkers side by side
-    "bench_title": "Benchmark: the same resume, three checkers",
+    # the benchmark: the same resume, the checkers side by side
+    "bench_title": "Benchmark: the same resume, the checkers",
     "bench_sub": "Read-only. The ATS Lab score is the first row and never changes.",
     "bench_cols": ("Checker", "Score", "Label", "Against the Lab", "What it read"),
     "bench_lab": "ATS Lab (this app)",

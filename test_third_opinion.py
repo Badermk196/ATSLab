@@ -49,7 +49,8 @@ def fake_result():
 class TestTheRegistration(unittest.TestCase):
     def test_it_is_the_third_checker(self):
         self.assertIn("engine", SO.CHECKERS)
-        self.assertEqual(list(SO.ORDER), ["matcher", "checker2", "engine"])
+        # the open-source parser (LeverParser) was added after it, so the first three are checked in order
+        self.assertEqual(list(SO.ORDER)[:3], ["matcher", "checker2", "engine"])
 
     def test_it_is_compared_with_the_lab_score(self):
         self.assertEqual(SO.CHECKERS["engine"]["compares"], "score")

@@ -37,3 +37,8 @@ psycopg[binary]==3.3.9
 # AI calls (OpenRouter) and tests
 requests==2.32.3
 reportlab==5.0.1
+
+# The fourth second-opinion checker on the Admin page: LeverParser, an open-source resume parser (MIT).
+# It runs locally and never changes the ATS Lab score. The distribution is `leverparser`, but its import
+# name is `pyresume`: see lab_lever.py. If it is missing, its card says "not installed" and the Lab works.
+leverparser==0.1.0

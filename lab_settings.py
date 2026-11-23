@@ -38,6 +38,7 @@ _TYPES = {
     "second_matcher": (bool, True),     # the Admin page's "Second opinion" cards ...
     "second_checker2": (bool, True),    # ... run only when the team presses their button
     "second_engine": (bool, True),      # ... the open-source checker (ats-engine), same rule
+    "second_lever": (bool, True),       # ... the open-source parser (LeverParser), same rule
 }
 SETTINGS = {k: (kind, default, T.SETTINGS_TEXT[k][0]) for k, (kind, default) in _TYPES.items()}
 LIMITS = {"file_days": (1, 3650), "daily_checks": (1, 1000), "review_score": (1, 100)}   # int settings: min, max
