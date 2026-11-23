@@ -267,8 +267,8 @@ def matcher_words(res, job_text, role=None):
             words = role_words(named)
             if words:
                 return words, "role", named
-        except Exception:                   # no key and nothing saved for this role: fall through to the resume
-            pass
+        except (Exception, SystemExit):      # no key, a wrong key or a role list that cannot be read:
+            pass                             # fall through to the resume (a card never breaks the page)
     words = skills_from_cv(res)
     if words:
         return words, "skills", ""
@@ -363,7 +363,7 @@ def run(checker, res, job_text="", settings=None):
     if checker == "matcher":
         try:
             out = run_matcher(res, job_text, res.get("target"))
-        except Exception as e:                  # a checker never breaks the Lab
+        except (Exception, SystemExit) as e:    # a checker never breaks the Lab (not even a stopped AI call)
             return {"state": FAILED, "why": type(e).__name__}
         if out.get("error") == "no_text":        # the saved result carries no text: say so, never answer 0
             return {"state": FAILED, "why": "no_text"}
@@ -373,20 +373,20 @@ def run(checker, res, job_text="", settings=None):
     if checker == "checker2":
         try:
             out = run_checker2(res)
-        except Exception as e:
+        except (Exception, SystemExit) as e:    # a checker never breaks the Lab
             return {"state": FAILED, "why": type(e).__name__}
         return {"state": DONE, **out}
     if checker == "engine":
         try:
             out = E.run(text_of(res), job_text)
-        except Exception as e:                  # a checker never breaks the Lab
+        except (Exception, SystemExit) as e:    # a checker never breaks the Lab
             return {"state": FAILED, "why": type(e).__name__}
         out["source"] = "engine"
         return out
     if checker == "lever":
         try:
             out = V.run(text_of(res))
-        except Exception as e:                  # a checker never breaks the Lab
+        except (Exception, SystemExit) as e:    # a checker never breaks the Lab
             return {"state": FAILED, "why": type(e).__name__}
         return out
     return {"state": FAILED, "why": "unknown checker"}

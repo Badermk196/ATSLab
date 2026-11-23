@@ -34,6 +34,18 @@ class TestSqlTranslation(unittest.TestCase):
     def test_begin_immediate_becomes_begin(self):
         self.assertEqual(lab_db.pg_sql("BEGIN IMMEDIATE"), "BEGIN")
 
+    def test_blob_becomes_bytea(self):
+        """The bugs table keeps a screenshot as BLOB: Postgres has no BLOB, only BYTEA."""
+        self.assertEqual(lab_db.pg_sql("  screenshot BLOB,"), "  screenshot BYTEA,")
+        self.assertNotIn("BLOB", lab_db.pg_sql(lab_store.SCHEMA))
+        self.assertIn("BYTEA", lab_db.pg_sql(lab_store.SCHEMA))
+
+    def test_the_new_id_is_asked_back_for_every_table_that_needs_it(self):
+        """add_bug() (like add_check) reads the id of the row it just wrote: Postgres must return it."""
+        self.assertIn("bugs", lab_db.INSERT_RETURNING_ID)
+        for name in lab_db.INSERT_RETURNING_ID:
+            self.assertIn(f"CREATE TABLE IF NOT EXISTS {name} (", lab_store.SCHEMA)
+
     def test_ordinary_sql_is_left_alone(self):
         sql = ("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET "
                "value = excluded.value")
@@ -227,7 +239,8 @@ class TestMigrationTypes(unittest.TestCase):
                      "no DATABASE_URL on this computer: the local SQLite file is used")
 class TestLivePostgres(unittest.TestCase):
     """The real database, when DATABASE_URL is set on this computer. This is the only test allowed to use it, and
-    it says so itself: it writes one settings row and removes it again, so real data is never touched."""
+    it says so itself: it writes one settings row and one bug report and removes both again, so real data is
+    never touched."""
 
     def setUp(self):
         self.allowed = mock.patch.object(lab_db, "local_only", return_value=False)
@@ -248,6 +261,32 @@ class TestLivePostgres(unittest.TestCase):
                 store.clear_setting(key)
             self.assertNotIn(key, store.saved_settings())
             self.assertGreaterEqual(len(store.history(limit=1)), 0)   # a real query against the real database
+
+    def test_a_bug_report_and_its_screenshot_survive_the_round_trip(self):
+        """The screenshot is stored as bytes (BLOB in SQLite, BYTEA in Postgres) and must come back unchanged."""
+        import lab_bugs as BG
+        image = b"\x89PNG\r\n\x1a\n" + b"live-test" * 20
+        with tempfile.TemporaryDirectory() as folder:
+            store = lab_store.Store(folder)
+            bid = store.add_bug({"who": "test_postgres_layer", "kind": "bug",
+                                 "description": "written by the test suite, deleted right after",
+                                 "cv": "test.pdf", "score": 50, "report": BG.result_text({"score": 50})},
+                                screenshot=image, mime="image/png")
+            try:
+                self.assertTrue(bid)                       # the new id came back
+                row = store.bug(bid)
+                self.assertEqual(row["state"], BG.NEW)
+                self.assertEqual(row["has_image"], 1)
+                got, mime = store.bug_image(bid)
+                self.assertEqual(bytes(got), image)
+                self.assertEqual(mime, "image/png")
+                store.set_bug_state(bid, BG.APPROVED, "test")
+                self.assertEqual(store.bug(bid)["state"], BG.APPROVED)
+                store.set_bug_step(bid, "fix")
+                self.assertEqual([done for _, done in BG.checklist(store.bug(bid))], [True, False, False])
+            finally:
+                store.delete_bug(bid)
+            self.assertIsNone(store.bug(bid))
 
 
 if __name__ == "__main__":

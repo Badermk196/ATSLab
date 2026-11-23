@@ -20,7 +20,7 @@ import os
 import re
 
 # Tables whose new id is wanted after an INSERT (checks.add_check uses it; the others are harmless).
-INSERT_RETURNING_ID = ("checks", "training", "admin_log")
+INSERT_RETURNING_ID = ("checks", "training", "admin_log", "bugs")
 _INSERT_TABLE = re.compile(r"^\s*insert\s+into\s+([a-z_]+)", re.I)
 _PRAGMA_TABLE = re.compile(r"^\s*pragma\s+table_info\(\s*([a-z_]+)\s*\)", re.I)
 
@@ -121,12 +121,14 @@ def pg_sql(sql):
     - "?" placeholders become "%s" (Postgres).
     - SQLite's two-argument MAX(a, b) becomes Postgres' GREATEST(a, b).
     - "INTEGER PRIMARY KEY AUTOINCREMENT" becomes "BIGSERIAL PRIMARY KEY".
+    - SQLite's BLOB becomes Postgres' BYTEA (the same bytes).
     - "BEGIN IMMEDIATE" becomes "BEGIN" (the same meaning: this transaction takes the write lock now).
     """
     out = sql.replace("?", "%s")
     out = re.sub(r"\bMAX\(\s*0\s*,", "GREATEST(0,", out, flags=re.I)
     out = re.sub(r"\bINTEGER PRIMARY KEY AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", out, flags=re.I)
     out = re.sub(r"\bBEGIN\s+IMMEDIATE\b", "BEGIN", out, flags=re.I)
+    out = re.sub(r"\bBLOB\b", "BYTEA", out, flags=re.I)
     return out
 
 

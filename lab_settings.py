@@ -39,9 +39,12 @@ _TYPES = {
     "second_checker2": (bool, True),    # ... run only when the team presses their button
     "second_engine": (bool, True),      # ... the open-source checker (ats-engine), same rule
     "second_lever": (bool, True),       # ... the open-source parser (LeverParser), same rule
+    "bug_image_days": (int, 30),        # a bug screenshot is deleted this many days after the team
+                                        # sets the bug Fixed or Rejected (the text always stays)
 }
 SETTINGS = {k: (kind, default, T.SETTINGS_TEXT[k][0]) for k, (kind, default) in _TYPES.items()}
-LIMITS = {"file_days": (1, 3650), "daily_checks": (1, 1000), "review_score": (1, 100)}   # int settings: min, max
+LIMITS = {"file_days": (1, 3650), "daily_checks": (1, 1000), "review_score": (1, 100),
+          "bug_image_days": (1, 3650)}                       # int settings: min, max
 
 
 def _secrets():

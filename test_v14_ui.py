@@ -371,7 +371,7 @@ class TestSidebar(Env):
         self.add("Low 2", score=41, f=facts(score=41))
         at = self.admin("check")
         labels = [b.label for b in at.sidebar.button]
-        self.assertEqual(labels[:5], [label for label, _ in T.NAV.values()])
+        self.assertEqual(labels[:len(T.NAV)], [label for label, _ in T.NAV.values()])
         text = all_text(at)
         self.assertIn('.st-key-nav_review button::after {content: "2"', "".join(m.value for m in at.markdown))
         self.assertIn(A.ADMIN_TEXT["version"].format(version=T.APP_VERSION), text)

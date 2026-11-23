@@ -24,6 +24,7 @@ import secrets
 import streamlit as st
 
 import dashboard as D
+import lab_bugs as BG
 import lab_pages as P
 import lab_second as SO
 import lab_settings as S
@@ -219,15 +220,22 @@ def sign_out():
 # ---------------------------------------------------------------------------
 # The sidebar
 # ---------------------------------------------------------------------------
-def nav_css(view, n_review):
+def nav_badge(key, n):
+    """The red count on a menu item (Needs review, Bug audit). Nothing is drawn when the count is zero."""
+    if not n:
+        return ""
+    return (f'.st-key-nav_{key} button {{position: relative;}} .st-key-nav_{key} button::after {{content: "{n}"; '
+            f"position: absolute; right: 10px; top: 50%; transform: translateY(-50%); min-width: 22px; height: 22px; "
+            f"padding: 0 6px; border-radius: 11px; background: var(--a-badge); color: #fff; font-size: .75rem; "
+            f"font-weight: 700; display: flex; align-items: center; justify-content: center;}}")
+
+
+def nav_css(view, n_review, n_bugs=0):
     """The open view's item, the red "Needs review" count, and the hidden labels of icon buttons."""
     on = (f".st-key-nav_{view} button {{background: var(--a-pri-soft) !important; border-color: var(--a-pri-line) "
           f"!important;}} .st-key-nav_{view} button p, .st-key-nav_{view} button [data-testid=\"stIconMaterial\"] "
           f"{{color: var(--a-pri-text) !important; font-weight: 600 !important;}}")
-    badge = (f'.st-key-nav_review button {{position: relative;}} .st-key-nav_review button::after {{content: "{n_review}"; '
-             f"position: absolute; right: 10px; top: 50%; transform: translateY(-50%); min-width: 22px; height: 22px; "
-             f"padding: 0 6px; border-radius: 11px; background: var(--a-badge); color: #fff; font-size: .75rem; "
-             f"font-weight: 700; display: flex; align-items: center; justify-content: center;}}") if n_review else ""
+    badge = nav_badge("review", n_review) + nav_badge("bugs", n_bugs)
     hidden = hidden_label(".st-key-sign_out") + hidden_label("[class*='st-key-hopen_']")
     gap = ".st-key-nav_check {margin-top: 12px;}"      # the first item sits a little away from "WORKSPACE"
     return on + badge + gap + hidden
@@ -747,6 +755,7 @@ def check_view(who):
              after_score=lambda: second_opinion(saved),       # the second opinion, under the Lab score
              set_aside=True,                                  # team only: X sets an issue aside and the score changes
              trainer=train, training=training)                # ... and teaches the Lab WHY (the teaching log)
+    report_bug_control(saved, who)      # the team can report a wrong result: a screenshot and one sentence
 
 
 # ---------------------------------------------------------------------------
@@ -1190,6 +1199,10 @@ def settings_view(who):
                 values["second_checker2"] = setting_row("second_checker2", "toggle", saved)
                 values["second_engine"] = setting_row("second_engine", "toggle", saved)
                 values["second_lever"] = setting_row("second_lever", "toggle", saved)
+            with st.container(key="card-set-bugs"):
+                st.markdown(f'<div class="a-h3">{ADMIN_TEXT["bugs_title"]}</div><p class="a-sub">'
+                            f'{ADMIN_TEXT["bugs_sub"]}</p>', unsafe_allow_html=True)
+                values["bug_image_days"] = setting_row("bug_image_days", "number", saved)
             with st.container(key="card-set-links"):
                 st.markdown(f'<div class="a-h3">{ADMIN_TEXT["links_title"]}</div><p class="a-sub">'
                             f'{ADMIN_TEXT["links_sub"]}</p>', unsafe_allow_html=True)
@@ -1305,6 +1318,207 @@ def log_view(who):
 # ---------------------------------------------------------------------------
 # The page
 # ---------------------------------------------------------------------------
+def show_image(data):
+    """One screenshot as wide as its card, on this version of Streamlit."""
+    try:
+        st.image(data, use_container_width=True)
+    except TypeError:                       # an older or newer Streamlit: the plain call always works
+        st.image(data)
+
+
+# ---------------------------------------------------------------------------
+# Bug reports (Admin only): "Report a bug" on a report, and the Bug audit page
+# ---------------------------------------------------------------------------
+# The screenshot, the sentence and the Lab's own result text go to the AI (never the resume itself).
+# Nothing here can change the ATS Lab score: the AI only writes text for the team to read, and a fix may
+# affect a score only after the team records every step of the checklist and the reference test passes.
+BUG_STEP_COLUMNS = BG.STEP_COLUMNS          # a step name -> its column, defined once in lab_bugs.py
+
+
+def bug_save(res, who, words, image, mime):
+    """Save one bug report and ask the AI about it. -> the new bug id."""
+    with st.spinner(T.BUG_TEXT["sending"]):
+        ai = BG.ask_ai(image, mime, words, BG.result_text(res))
+    bid = store().add_bug({"who": who, "kind": "bug", "description": words,
+                           "check_id": str(res.get("_uid") or ""), "cv": res.get("cv") or "",
+                           "target": res.get("target") or "", "score": res.get("score"),
+                           "report": BG.result_text(res), "ai_model": ai.get("model") or "",
+                           "ai_explanation": ai.get("explanation") or "", "ai_fix": ai.get("fix") or "",
+                           "ai_error": ai.get("error") or ai.get("why") or ""},
+                          screenshot=image, mime=mime)
+    store().log(who, "bug", f"#{bid}", (words or "")[:120])
+    if ai.get("error"):
+        st.warning(T.BUG_TEXT["ai_failed"].format(why=ai.get("why") or ai.get("error")))
+    return bid
+
+
+def report_bug_control(saved, who):
+    """The "Report a bug" box under a report: a screenshot and one sentence."""
+    res = (saved or {}).get("res") or {}
+    tag = str(res.get("_uid") or res.get("cv") or "report")
+    with st.expander(T.BUG_TEXT["report_open"]):
+        st.markdown(f'<p class="a-sub">{UI.esc(T.BUG_TEXT["report_hint"])}</p>', unsafe_allow_html=True)
+        shot = st.file_uploader(T.BUG_TEXT["screenshot"], type=["png", "jpg", "jpeg", "webp"], key=f"bug_shot_{tag}")
+        words = st.text_input(T.BUG_TEXT["sentence"], key=f"bug_words_{tag}")
+        if st.button(T.BUG_TEXT["send"], key=f"bug_send_{tag}", type="primary"):
+            image = shot.getvalue() if shot is not None else b""
+            if not (words or "").strip():
+                st.warning(T.BUG_TEXT["need_words"])
+                return
+            ok, why = BG.allowed_image(getattr(shot, "type", ""), len(image))
+            if not ok:
+                st.warning({"type": T.BUG_TEXT["wrong_type"], "empty": T.BUG_TEXT["need_image"],
+                            "big": T.BUG_TEXT["too_big"].format(mb=round(len(image) / 1048576, 1),
+                                                                max=BG.MAX_IMAGE_MB)}[why])
+                return
+            bid = bug_save(res, who, words, image, getattr(shot, "type", ""))
+            if bid:
+                st.success(T.BUG_TEXT["saved"].format(n=bid))
+
+
+def bug_decide(bug, state, who, note=""):
+    """Approve / reject / mark fixed, and write it in the Activity log."""
+    store().set_bug_state(bug["id"], state, who, note)
+    store().log(who, "bug", f'#{bug["id"]}', T.BUG_TEXT["state_" + state])
+    st.rerun()
+
+
+def bug_step(bug, step, who):
+    """Record one step of the fix checklist (the fix, the golden set, the reference test)."""
+    store().set_bug_step(bug["id"], step)
+    store().log(who, "bug", f'#{bug["id"]}', dict(BG.FIX_STEPS)[step])
+    st.rerun()
+
+
+def bug_ask_again(bug, who):
+    """Ask the AI again about a bug it could not answer before (the screenshot is still stored)."""
+    image, mime = store().bug_image(bug["id"])
+    if not image:
+        st.warning(T.BUG_TEXT["image_gone"])
+        return
+    with st.spinner(T.BUG_TEXT["sending"]):
+        ai = BG.ask_ai(image, mime, bug.get("description") or "", bug.get("report") or "")
+    store().set_bug_ai(bug["id"], ai)
+    store().log(who, "bug", f'#{bug["id"]}', "Asked the AI again")
+    st.rerun()
+
+
+def bug_grid(bugs):
+    """The screenshots of the bugs on screen: press Open to see one full size."""
+    with_image = [b for b in bugs if b.get("has_image")]
+    if not with_image:
+        return
+    st.markdown(f'<div class="a-h3">{UI.esc(T.BUG_TEXT["grid_title"])}</div>'
+                f'<p class="a-sub">{UI.esc(T.BUG_TEXT["grid_sub"])}</p>', unsafe_allow_html=True)
+    cols = st.columns(4, gap="small")
+    for i, bug in enumerate(with_image[:8]):
+        with cols[i % 4]:
+            image, _ = store().bug_image(bug["id"])
+            if image:
+                show_image(image)
+            if st.button(f'{T.BUG_TEXT["open"]} #{bug["id"]}', key=f'bug_open_{bug["id"]}', width="stretch"):
+                st.session_state["bug_open"] = bug["id"]
+                st.rerun()
+    opened = st.session_state.get("bug_open")
+    if opened:
+        image, _ = store().bug_image(opened)
+        if image:
+            st.markdown(f'<div class="a-h3">#{UI.esc(opened)}</div>', unsafe_allow_html=True)
+            show_image(image)
+        if st.button(T.BUG_TEXT["close"], key="bug_close"):
+            st.session_state.pop("bug_open", None)
+            st.rerun()
+
+
+def bug_card(bug, who, days):
+    """One bug: what happened, what the AI says, the decision, and the fix checklist."""
+    bid = bug["id"]
+    state = BG.state_of(bug)
+    title = f'#{bid} · {T.BUG_TEXT["state_" + state]} · {bug.get("cv") or ""}'
+    with st.expander(title):
+        facts = [(T.BUG_TEXT["reporter"], bug.get("who")), (T.BUG_TEXT["when"], when(bug.get("created_at"))),
+                 (T.BUG_TEXT["resume"], bug.get("cv")), (T.BUG_TEXT["score"], bug.get("score"))]
+        st.markdown('<div class="a-sub">' + " · ".join(f"{UI.esc(k)}: {UI.esc(v)}" for k, v in facts
+                                                       if v not in (None, "")) + "</div>", unsafe_allow_html=True)
+        st.markdown(f'<div class="a-h3">{UI.esc(T.BUG_TEXT["description"])}</div>'
+                    f'<p class="a-sub">{UI.esc(bug.get("description") or "")}</p>', unsafe_allow_html=True)
+        image, _ = store().bug_image(bid) if bug.get("has_image") else (None, "")
+        if image:
+            show_image(image)
+            st.caption(T.BUG_TEXT["image_kept"].format(date=BG.keep_until(bug, days) or "")
+                       if state in BG.CLOSED else T.BUG_TEXT["image_open"])
+        else:
+            st.caption(T.BUG_TEXT["image_gone"])
+        st.markdown(f'<div class="a-h3">{UI.esc(T.BUG_TEXT["ai_title"])}</div>', unsafe_allow_html=True)
+        if bug.get("ai_explanation") or bug.get("ai_fix"):
+            st.markdown(f'<p class="a-sub"><b>{UI.esc(T.BUG_TEXT["ai_explanation"])}:</b> '
+                        f'{UI.esc(bug.get("ai_explanation") or "")}<br>'
+                        f'<b>{UI.esc(T.BUG_TEXT["ai_fix"])}:</b> {UI.esc(bug.get("ai_fix") or "")}</p>',
+                        unsafe_allow_html=True)
+        elif bug.get("ai_error"):
+            st.markdown(f'<p class="a-sub">{UI.esc(T.BUG_TEXT["ai_failed"].format(why=bug.get("ai_error")))}</p>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(f'<p class="a-sub">{UI.esc(T.BUG_TEXT["ai_none"])}</p>', unsafe_allow_html=True)
+        if bug.get("has_image") and st.button(T.BUG_TEXT["ask_again"], key=f"bug_ai_{bid}"):
+            bug_ask_again(bug, who)
+        st.markdown(f'<details><summary>{UI.esc(T.BUG_TEXT["result"])}</summary>'
+                    f'<pre style="white-space:pre-wrap;font-size:.8rem">{UI.esc(bug.get("report") or "")}</pre>'
+                    f'</details>', unsafe_allow_html=True)
+        note = st.text_input(T.BUG_TEXT["note"], key=f"bug_note_{bid}")
+        a, b, c = st.columns(3)
+        if a.button(T.BUG_TEXT["approve"], key=f"bug_yes_{bid}", width="stretch"):
+            bug_decide(bug, BG.APPROVED, who, note)
+        if b.button(T.BUG_TEXT["reject"], key=f"bug_no_{bid}", width="stretch"):
+            bug_decide(bug, BG.REJECTED, who, note)
+        if c.button(T.BUG_TEXT["mark_fixed"], key=f"bug_fixed_{bid}", width="stretch"):
+            bug_decide(bug, BG.FIXED, who, note)
+        st.markdown(f'<div class="a-h3">{UI.esc(T.BUG_TEXT["steps_title"])}</div>'
+                    f'<p class="a-sub">{UI.esc(T.BUG_TEXT["steps_sub"])}</p>', unsafe_allow_html=True)
+        for step, label in BG.FIX_STEPS:
+            done = bool(bug.get(BUG_STEP_COLUMNS[step]))
+            cols = st.columns([3, 1], vertical_alignment="center")
+            cols[0].markdown(f'<div class="a-sub">{"&#10003;" if done else "&#9675;"} {UI.esc(label)} - '
+                             f'{UI.esc(T.BUG_TEXT["step_done"] if done else T.BUG_TEXT["step_todo"])}</div>',
+                             unsafe_allow_html=True)
+            if not done and cols[1].button(T.BUG_TEXT["step_button"], key=f"bug_step_{step}_{bid}",
+                                           width="stretch"):
+                bug_step(bug, step, who)
+        if BG.ready_for_score(bug):
+            st.success(T.BUG_TEXT["ready"])
+
+
+def bugs_view(who):
+    """Bug audit (Admin only): the screenshots, every detail, and the decisions."""
+    days = P.setting("bug_image_days")
+    store().cleanup_bug_images(days)                 # the screenshot rule, applied whenever the page opens
+    rows = store().bugs()
+    counts = BG.summary(rows)
+    head, right = st.columns([3, 1.4], vertical_alignment="center")
+    head.markdown(UI.page_title(T.BUG_TEXT["title"], T.BUG_TEXT["sub"]), unsafe_allow_html=True)
+    right.markdown(f'<div class="a-sub" style="text-align:right">'
+                   f'{UI.esc(T.BUG_TEXT["count"].format(n=counts[BG.NEW]))}</div>', unsafe_allow_html=True)
+    if not rows:
+        st.markdown(UI.empty("&#128027;", T.BUG_TEXT["none"]), unsafe_allow_html=True)
+        return
+    f1, f2 = st.columns([2.4, 1.6], vertical_alignment="center")
+    labels = [T.BUG_TEXT["all"]] + [T.BUG_TEXT[s] for s in BG.STATES]
+    picked = f1.segmented_control(T.BUG_TEXT["filters"], labels, default=T.BUG_TEXT["all"], key="bug_filter",
+                                  label_visibility="collapsed")
+    q = f2.text_input(T.BUG_TEXT["search"], key="bug_search", label_visibility="collapsed",
+                      placeholder=T.BUG_TEXT["search"])
+    state = None if picked in (None, T.BUG_TEXT["all"]) else next((s for s in BG.STATES
+                                                                  if T.BUG_TEXT[s] == picked), None)
+    shown = BG.find(rows, state, q)
+    if not shown:
+        st.markdown(UI.empty("&#128269;", T.BUG_TEXT["empty"]), unsafe_allow_html=True)
+        return
+    bug_grid(shown)
+    for bug in shown:
+        bug_card(bug, who, days)
+
+
+
 def admin():
     who = st.session_state.get("admin") or restore_login()    # a browser that signed in before stays signed in
     if who and who not in S.admin_accounts():       # the account was removed: sign in again
@@ -1316,8 +1530,9 @@ def admin():
         return
     view = current_view()
     n_review = len(store().needs_review(P.review_rules()))
-    P.start_page("admin", nav_css(view, n_review) + UI.drop_zone(ADMIN_TEXT["drop"], ADMIN_TEXT["browse"],
+    n_bugs = store().new_bugs()                      # the number beside "Bug audit"
+    P.start_page("admin", nav_css(view, n_review, n_bugs) + UI.drop_zone(ADMIN_TEXT["drop"], ADMIN_TEXT["browse"],
                                                                  ADMIN_TEXT["drop_hint"]))
     sidebar(who, view)
     {"check": check_view, "history": history_view, "review": review_view, "settings": settings_view,
-     "log": log_view}[view](who)
+     "log": log_view, "bugs": bugs_view}[view](who)

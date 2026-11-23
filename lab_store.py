@@ -102,6 +102,31 @@ CREATE TABLE IF NOT EXISTS training (
   note TEXT,
   evidence TEXT
 );
+CREATE TABLE IF NOT EXISTS bugs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL,
+  who TEXT NOT NULL,
+  kind TEXT,
+  description TEXT,
+  check_id TEXT,
+  cv TEXT,
+  target TEXT,
+  score REAL,
+  report TEXT,
+  screenshot BLOB,
+  screenshot_type TEXT,
+  ai_model TEXT,
+  ai_explanation TEXT,
+  ai_fix TEXT,
+  ai_error TEXT,
+  state TEXT NOT NULL DEFAULT 'new',
+  state_when TEXT,
+  state_who TEXT,
+  note TEXT,
+  fixed_ok INTEGER NOT NULL DEFAULT 0,
+  golden_added INTEGER NOT NULL DEFAULT 0,
+  reference_passed INTEGER NOT NULL DEFAULT 0
+);
 """
 KEEP_COUNT_DAYS = 7               # daily check counts older than this are deleted
 SESSION_DAYS = 30                 # an admin who stays signed in: the cookie lasts this long without a visit
@@ -368,6 +393,133 @@ class Store:
         return self._empty("training")["training"]
 
     # --- settings an admin saved ------------------------------------------------------------------------------
+    # --- bug reports (Admin page: "Report a bug" and the Bug audit page) -----------------------------
+    # The screenshot is the only image the Lab stores. It is deleted `bug_image_days` days after the team
+    # sets a bug Fixed or Rejected (cleanup_bug_images); the text of the report always stays.
+    def add_bug(self, rec, screenshot=None, mime="", when=None):
+        """Save one bug report (and its screenshot when there is one). -> the new row id."""
+        rec = dict(rec, created_at=(when or now()).strftime(TIME_FORMAT))
+        rec["state"] = rec.get("state") or "new"
+        rec["state_when"] = rec.get("state_when") or rec["created_at"]
+        cols = [c for c in rec if c in BUG_COLUMNS]
+        args = [rec[c] for c in cols]
+        if screenshot:
+            cols += ["screenshot", "screenshot_type"]
+            args += [screenshot, mime or ""]
+        con = self.db()
+        try:
+            with con:
+                return con.execute(f"INSERT INTO bugs ({', '.join(cols)}) "
+                                   f"VALUES ({', '.join('?' * len(cols))})", args).lastrowid
+        finally:
+            con.close()
+
+    def bugs(self, limit=500):
+        """Every bug report, newest first. The screenshot itself is not read here: the page asks for one
+        image at a time, so a long list stays fast."""
+        return self._all("SELECT id, created_at, who, kind, description, check_id, cv, target, score, state, "
+                         "state_when, state_who, note, ai_model, ai_explanation, ai_fix, ai_error, "
+                         "fixed_ok, golden_added, reference_passed, "
+                         "CASE WHEN screenshot IS NULL THEN 0 ELSE 1 END AS has_image "
+                         "FROM bugs ORDER BY id DESC LIMIT ?", (limit,))
+
+    def bug(self, bid):
+        """One bug report, without its screenshot."""
+        rows = self._all("SELECT id, created_at, who, kind, description, check_id, cv, target, score, state, "
+                         "state_when, state_who, note, ai_model, ai_explanation, ai_fix, ai_error, "
+                         "fixed_ok, golden_added, reference_passed, report, "
+                         "CASE WHEN screenshot IS NULL THEN 0 ELSE 1 END AS has_image "
+                         "FROM bugs WHERE id = ?", (bid,))
+        return rows[0] if rows else None
+
+    def bug_image(self, bid):
+        """The screenshot of one bug. -> (bytes, mime) or (None, "") after it has been deleted."""
+        rows = self._all("SELECT screenshot, screenshot_type FROM bugs WHERE id = ?", (bid,))
+        if not rows:
+            return None, ""
+        return rows[0]["screenshot"], (rows[0]["screenshot_type"] or "")
+
+    def set_bug_state(self, bid, state, who, note="", when=None):
+        """Approve / reject / mark fixed: the state, who decided and when."""
+        con = self.db()
+        try:
+            with con:
+                con.execute("UPDATE bugs SET state = ?, state_when = ?, state_who = ?, note = ? WHERE id = ?",
+                            (state, (when or now()).strftime(TIME_FORMAT), who or "", note or "", bid))
+        finally:
+            con.close()
+
+    def set_bug_ai(self, bid, ai):
+        """Keep what the AI answered: text only, and a failure is kept as a plain reason."""
+        ai = ai or {}
+        con = self.db()
+        try:
+            with con:
+                con.execute("UPDATE bugs SET ai_model = ?, ai_explanation = ?, ai_fix = ?, ai_error = ? "
+                            "WHERE id = ?",
+                            (ai.get("model") or "", ai.get("explanation") or "", ai.get("fix") or "",
+                             ai.get("error") or ai.get("why") or "", bid))
+        finally:
+            con.close()
+
+    def set_bug_step(self, bid, step):
+        """Record one step of the fix checklist: "fix", "golden" or "reference"."""
+        column = {"fix": "fixed_ok", "golden": "golden_added", "reference": "reference_passed"}[step]
+        con = self.db()
+        try:
+            with con:
+                con.execute(f"UPDATE bugs SET {column} = 1 WHERE id = ?", (bid,))
+        finally:
+            con.close()
+
+    def new_bugs(self):
+        """How many bug reports nobody has decided yet (the number beside the menu)."""
+        rows = self._all("SELECT COUNT(*) AS n FROM bugs WHERE state = ?", ("new",))
+        return int(rows[0]["n"]) if rows else 0
+
+    def drop_bug_image(self, bid):
+        """Delete one screenshot and keep the text."""
+        con = self.db()
+        try:
+            with con:
+                con.execute("UPDATE bugs SET screenshot = NULL, screenshot_type = NULL WHERE id = ?", (bid,))
+        finally:
+            con.close()
+
+    def cleanup_bug_images(self, days, at=None):
+        """Delete the screenshots of bugs the team closed `days` days ago or more. -> how many were deleted."""
+        cutoff = ((at or now()) - dt.timedelta(days=int(days))).strftime(TIME_FORMAT)
+        con = self.db()
+        try:
+            with con:
+                rows = con.execute("SELECT id FROM bugs WHERE screenshot IS NOT NULL "
+                                   "AND state IN ('fixed', 'rejected') AND state_when IS NOT NULL "
+                                   "AND state_when <= ?", (cutoff,)).fetchall()
+                for row in rows:
+                    con.execute("UPDATE bugs SET screenshot = NULL, screenshot_type = NULL WHERE id = ?",
+                                (row["id"],))
+        finally:
+            con.close()
+        return len(rows)
+
+    def delete_bug(self, bid):
+        """Remove one bug report and its screenshot."""
+        con = self.db()
+        try:
+            with con:
+                con.execute("DELETE FROM bugs WHERE id = ?", (bid,))
+        finally:
+            con.close()
+
+    def clear_bugs(self):
+        """Remove every bug report (used by the tests and by reset_data.py)."""
+        con = self.db()
+        try:
+            with con:
+                con.execute("DELETE FROM bugs")
+        finally:
+            con.close()
+
     def saved_settings(self):
         return {r["key"]: r["value"] for r in self._all("SELECT key, value FROM settings")}
 
@@ -492,6 +644,9 @@ COLUMNS = ("created_at", "checked_by", "candidate", "file_name", "file_path", "f
            "compared_with", "report_body", "report_doc", "comparison_doc", "lead_name", "lead_email", "review_note",
            "review_facts")
 HEAVY = {"report_body", "report_doc", "comparison_doc"}
+# the bug report columns add_bug() may write (the id and the screenshot are handled by the store)
+BUG_COLUMNS = ("created_at", "who", "kind", "description", "check_id", "cv", "target", "score", "report",
+               "ai_model", "ai_explanation", "ai_fix", "ai_error", "state", "state_when", "state_who", "note")
 
 
 def decode(row):

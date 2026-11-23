@@ -17,6 +17,7 @@ NAV = {
     "check": ("Check a resume", ":material/upload_file:"),
     "history": ("History", ":material/history:"),
     "review": ("Needs review", ":material/warning:"),
+    "bugs": ("Bug audit", ":material/bug_report:"),
     "settings": ("Settings", ":material/settings:"),
     "log": ("Activity log", ":material/list:"),
 }
@@ -124,6 +125,7 @@ ADMIN_TEXT = {
     "links_title": "User page buttons", "links_sub": "Where the buttons on the user page go.",
     "second_title": "Second opinions", "second_sub": "Two extra ATS checkers beside the Lab score. "
                     "They are for comparison only and never change the score.",
+    "bugs_title": "Bug reports", "bugs_sub": "How long a screenshot is kept after the team closes a bug.",
     "server_title": "About this server",
     "server": ["Admin accounts: {admins}", "AI key set: {key}", "Data folder: {folder}",
                "Checks in the history: {checks}", "Version: ATS Lab v{version}"],
@@ -156,6 +158,7 @@ LOG_KINDS = {
     "export": ("Exports", "Exported CSV"),
     "sign_in": ("Sign-ins", "Signed in"),
     "training": ("Teaching", "Set an issue aside"),
+    "bug": ("Bugs", "Reported a bug"),
 }
 LOG_DETAILS = {
     "check": "{job} · score {score} · {label}",
@@ -194,6 +197,9 @@ SETTINGS_TEXT = {
     "second_lever": ("LeverParser card (open-source)",
                      "Shows the open-source LeverParser card on the Admin page. It reads the resume text on "
                      "this server and never changes the ATS Lab score."),
+    "bug_image_days": ("Keep bug screenshots",
+                       "After the team sets a bug Fixed or Rejected, its screenshot is deleted this many "
+                       "days later. The text of the report stays in the Bug audit page."),
 }
 DAYS = "{n} days"
 
@@ -256,6 +262,43 @@ SECOND_TEXT = {
     "bench_cols": ("Checker", "Score", "Label", "Against the Lab", "What it read"),
     "bench_lab": "ATS Lab (this app)",
     "bench_lab_note": "the Lab's own score",
+}
+
+# Bug reports (Admin page): "Report a bug" on a report, and the Bug audit page.
+BUG_TEXT = {
+    "title": "Bug audit", "sub": "Every bug the team reported, with what the AI says about it.",
+    "count": "{n} waiting for a decision",
+    "report_open": "Report a bug",
+    "report_hint": "A screenshot and one sentence. The resume itself is never sent - only the screenshot, "
+                   "your sentence and the Lab's own result.",
+    "screenshot": "Screenshot (PNG or JPG)", "sentence": "What is wrong? (one sentence)",
+    "send": "Send to the AI", "sending": "Reading the screenshot...",
+    "saved": "Bug #{n} saved. The team can decide on it on the Bug audit page.",
+    "need_image": "Attach a screenshot first.",
+    "need_words": "Write one sentence first.",
+    "too_big": "That screenshot is {mb} MB. Up to {max} MB.",
+    "wrong_type": "That file is not an image. Use a PNG or a JPG.",
+    "ai_failed": "The AI could not answer ({why}). The bug is saved: try again from the Bug audit page.",
+    "ai_none": "No AI answer yet.",
+    "ai_title": "What the AI says", "ai_explanation": "Why", "ai_fix": "Suggested fix",
+    "ask_again": "Ask the AI again",
+    "filters": "Show", "search": "Search by word, resume or reporter",
+    "all": "All", "new": "New", "approved": "Approved", "fixed": "Fixed", "rejected": "Rejected",
+    "state_new": "New", "state_approved": "Approved", "state_fixed": "Fixed", "state_rejected": "Rejected",
+    "grid_title": "Screenshots", "grid_sub": "Press Open to see one full size.",
+    "open": "Open", "close": "Close",
+    "reporter": "Reported by", "when": "When", "resume": "Resume", "score": "Lab score",
+    "description": "What the team wrote", "result": "What the Lab produced",
+    "note": "Note (optional)",
+    "approve": "Approve", "reject": "Reject", "mark_fixed": "Mark as fixed",
+    "steps_title": "Before a fix may change any score",
+    "steps_sub": "Every step must be recorded and the reference test must pass.",
+    "step_done": "done", "step_todo": "to do", "step_button": "Record",
+    "ready": "All steps are recorded: this fix may now affect the score.",
+    "image_open": "The screenshot is kept while the bug is open.",
+    "image_kept": "The screenshot is deleted on {date} (only the text stays).",
+    "image_gone": "The screenshot was deleted. The text of the report stays.",
+    "empty": "No bugs match this filter.", "none": "No bugs have been reported yet.",
 }
 
 # the reasons a check needs review (also the rule names in the "Needs review" subtitle)

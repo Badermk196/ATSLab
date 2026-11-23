@@ -22,6 +22,7 @@ os.environ["ATSLAB_AI_REVIEW"] = "0"      # no AI review (and no cost) in these 
 from streamlit.testing.v1 import AppTest
 
 import admin_page as A
+import cv_score as C
 import lab_second as SO
 import lab_settings as S
 import lab_text as T
@@ -137,6 +138,25 @@ class TestTheCheckers(unittest.TestCase):
         self.assertEqual(SO.run("matcher", self.res, JOB_TEXT, {"matcher": False})["state"], SO.OFF)
         self.assertEqual(SO.run("checker2", self.res, "", {"checker2": False})["state"], SO.OFF)
         self.assertEqual(SO.run("nope", self.res, JOB_TEXT, {})["state"], SO.FAILED)
+
+    def test_a_wrong_ai_key_never_breaks_the_matcher_card(self):
+        """The Lab's AI call stops the whole process when the key is wrong (sys.exit). The card must not: it
+        falls through to the resume's own skills, exactly as it does when there is no key at all."""
+        old = C.role_skills
+        C.role_skills = lambda *a, **k: (_ for _ in ()).throw(SystemExit("the AI service is busy"))
+        self.addCleanup(setattr, C, "role_skills", old)
+        res = dict(self.res, _doc={"modern": "Sample Candidate. Dubai.\nSKILLS\nstakeholder management, "
+                                            "release management, reporting"})
+        words, source, named = SO.matcher_words(res, "", "Sales Manager")
+        self.assertEqual(source, "skills")
+        self.assertTrue(words)
+        self.assertEqual(SO.run("matcher", res, "", {"matcher": True})["state"], SO.DONE)
+
+    def test_a_checker_that_stops_the_process_never_kills_the_page(self):
+        old = SO.run_matcher
+        SO.run_matcher = lambda *a, **k: (_ for _ in ()).throw(SystemExit("the AI service is busy"))
+        self.addCleanup(setattr, SO, "run_matcher", old)
+        self.assertEqual(SO.run("matcher", self.res, "", {"matcher": True})["state"], SO.FAILED)
 
     def test_a_broken_checker_never_breaks_the_lab(self):
         out = SO.run("checker2", {"layout": "not a dict"}, "", {})
