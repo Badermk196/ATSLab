@@ -20,6 +20,11 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 SLOW = ("test_strong", "test_reference")
 
+# The tests must never touch the server database: some of them clear the data (test_reset_data really calls
+# clear_data), and with DATABASE_URL in the secrets that would wipe the real History. lab_db.py also refuses
+# Postgres whenever a test module is loaded; this line says it out loud.
+os.environ.setdefault("ATSLAB_LOCAL_DB", "1")
+
 
 def modules(args):
     every = sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(HERE, "test_*.py")))

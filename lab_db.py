@@ -25,20 +25,77 @@ _INSERT_TABLE = re.compile(r"^\s*insert\s+into\s+([a-z_]+)", re.I)
 _PRAGMA_TABLE = re.compile(r"^\s*pragma\s+table_info\(\s*([a-z_]+)\s*\)", re.I)
 
 
-def url():
-    """DATABASE_URL from the app's secrets, else from the environment, else None (then the local file is used).
-    It is never written in the code, and it is never printed or logged."""
+_LOCAL_ONLY = None
+
+
+def local_only():
+    """True when the Lab must never use the server database, whatever DATABASE_URL says.
+
+    Two cases: a test run (some tests clear the data - test_reset_data really calls clear_data - and they would
+    wipe the real History), and ATSLAB_LOCAL_DB=1 for a tool that must stay on this computer. The answer is
+    worked out once and kept."""
+    global _LOCAL_ONLY
+    if _LOCAL_ONLY is None:
+        import sys
+        forced = os.environ.get("ATSLAB_LOCAL_DB") == "1"
+        testing = any(name.startswith("test_") for name in list(sys.modules))
+        _LOCAL_ONLY = forced or testing
+    return _LOCAL_ONLY
+
+
+def pick(mapping, key):
+    """One value out of a secrets mapping: the top level first, then inside any section. A connection string
+    written under another section by mistake (e.g. under [admins]) must still be found, so the Lab never fails
+    to start over the place of one line."""
     try:
-        import streamlit as st
-        try:
-            value = st.secrets["DATABASE_URL"]
-        except Exception:
-            value = None
-        if value:
-            return str(value)
+        value = mapping[key]
+    except Exception:
+        value = None
+    if value:
+        return str(value)
+    try:
+        for section in mapping.values():
+            if isinstance(section, dict) and section.get(key):
+                return str(section[key])
     except Exception:
         pass
+    return None
+
+
+def url():
+    """DATABASE_URL from the app's secrets, else from .streamlit/secrets.toml, else from the environment, else
+    None (then the local file is used). It is never written in the code, and it is never printed or logged.
+
+    Both secret places are needed: Streamlit's own secrets only load inside a running app, and the migration
+    script and the tests run from the command line. A test run always gets None: see local_only()."""
+    if local_only():
+        return None
+    try:
+        import streamlit as st
+        value = pick(st.secrets, "DATABASE_URL")
+        if value:
+            return value
+    except Exception:
+        pass
+    value = secrets_file_value("DATABASE_URL")
+    if value:
+        return value
     return os.environ.get("DATABASE_URL") or None
+
+
+def secrets_file_value(key):
+    """One value from .streamlit/secrets.toml (the file next to the app). None when the file or the key is not
+    there. Nothing is printed: a connection string is a secret."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".streamlit", "secrets.toml")
+    if not os.path.exists(path):
+        return None
+    try:
+        import tomllib
+        with open(path, "rb") as handle:
+            data = tomllib.load(handle)
+    except Exception:
+        return None
+    return pick(data, key)
 
 
 def is_postgres():

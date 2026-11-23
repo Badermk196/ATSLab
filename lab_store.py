@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS training (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,
   admin TEXT NOT NULL,
-  check_id INTEGER,
+  check_id TEXT,
   cv TEXT,
   job_title TEXT,
   score REAL,

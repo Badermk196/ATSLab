@@ -10,9 +10,11 @@ is safe to run anywhere. It writes one settings row and removes it again: it nev
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import lab_db
 import lab_store
+import migrate_to_neon
 
 
 class TestSqlTranslation(unittest.TestCase):
@@ -45,6 +47,38 @@ class TestSqlTranslation(unittest.TestCase):
         self.assertNotIn("BIGSERIAL", lab_store.SCHEMA)
 
 
+class TestSecretsReading(unittest.TestCase):
+    """DATABASE_URL must be found wherever it was written, without ever printing it."""
+
+    def test_the_top_level_is_read_first(self):
+        self.assertEqual(lab_db.pick({"DATABASE_URL": "postgres://a", "other": "x"}, "DATABASE_URL"),
+                         "postgres://a")
+
+    def test_a_value_written_inside_a_section_is_still_found(self):
+        """Real case: DATABASE_URL was pasted under [admins], and the Lab must not fail to start because of it."""
+        self.assertEqual(lab_db.pick({"admins": {"bader": "pw", "DATABASE_URL": "postgres://b"}}, "DATABASE_URL"),
+                         "postgres://b")
+
+    def test_nothing_found(self):
+        self.assertIsNone(lab_db.pick({"admins": {"bader": "pw"}}, "DATABASE_URL"))
+        self.assertIsNone(lab_db.pick({}, "DATABASE_URL"))
+
+
+class TestTheGuard(unittest.TestCase):
+    """A test run must NEVER use the server database."""
+
+    def test_a_test_run_never_uses_the_server_database(self):
+        """Dangerous bug once: with DATABASE_URL in the local secrets, the tests connected to the live database,
+        and test_reset_data (which really calls clear_data) would have wiped the real History."""
+        self.assertTrue(lab_db.local_only())
+        self.assertFalse(lab_db.is_postgres())
+
+    def test_the_local_file_is_used_instead(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = lab_store.Store(folder)
+            self.assertFalse(store.postgres)
+
+
 class TestRow(unittest.TestCase):
     """A Postgres row is read the same way as a SQLite row: by name and by position."""
 
@@ -68,14 +102,18 @@ class TestRow(unittest.TestCase):
 
 
 class TestLocalStorage(unittest.TestCase):
-    """No DATABASE_URL here: the Lab must keep using the local file and behave exactly as before."""
+    """The local file must keep working exactly as before, on a computer that has a DATABASE_URL too (the app
+    switches to Postgres, so the local path is tested with the URL hidden)."""
 
     def setUp(self):
+        self.no_url = mock.patch.object(lab_db, "url", return_value=None)
+        self.no_url.start()
         self.folder = tempfile.TemporaryDirectory()
         self.store = lab_store.Store(self.folder.name)
 
     def tearDown(self):
         self.folder.cleanup()
+        self.no_url.stop()
 
     def test_a_computer_uses_the_local_file(self):
         self.assertFalse(self.store.postgres)
@@ -164,9 +202,39 @@ class TestLocalStorage(unittest.TestCase):
         self.assertEqual(self.store.add_check({"checked_by": "tester", "candidate": "Second"}), 1)
 
 
-@unittest.skipUnless(lab_db.is_postgres(), "no DATABASE_URL: the local SQLite file is used")
+class TestMigrationTypes(unittest.TestCase):
+    """SQLite is loosely typed, so a text value can sit in a column that says INTEGER. Moving the data must not
+    stop on that, and must never turn text into a number."""
+
+    def test_a_number_stays_a_number(self):
+        self.assertEqual(migrate_to_neon.as_column("INTEGER", 3), 3)
+        self.assertEqual(migrate_to_neon.as_column("INTEGER", "3"), 3)
+        self.assertEqual(migrate_to_neon.as_column("REAL", "71.5"), 71.5)
+
+    def test_text_in_an_integer_column_becomes_empty(self):
+        self.assertIsNone(migrate_to_neon.as_column("INTEGER", "9267d6536a68c961"))
+
+    def test_text_stays_text(self):
+        self.assertEqual(migrate_to_neon.as_column("TEXT", "Dubai"), "Dubai")
+        self.assertEqual(migrate_to_neon.as_column("TEXT", 2026), "2026")
+
+    def test_an_empty_value_stays_empty(self):
+        self.assertIsNone(migrate_to_neon.as_column("INTEGER", None))
+        self.assertIsNone(migrate_to_neon.as_column("TEXT", None))
+
+
+@unittest.skipUnless(lab_db.secrets_file_value("DATABASE_URL") or os.environ.get("DATABASE_URL"),
+                     "no DATABASE_URL on this computer: the local SQLite file is used")
 class TestLivePostgres(unittest.TestCase):
-    """The real database, when DATABASE_URL is set. One test row, removed again: real data is never touched."""
+    """The real database, when DATABASE_URL is set on this computer. This is the only test allowed to use it, and
+    it says so itself: it writes one settings row and removes it again, so real data is never touched."""
+
+    def setUp(self):
+        self.allowed = mock.patch.object(lab_db, "local_only", return_value=False)
+        self.allowed.start()
+
+    def tearDown(self):
+        self.allowed.stop()
 
     def test_the_database_answers_and_the_tables_are_there(self):
         with tempfile.TemporaryDirectory() as folder:
