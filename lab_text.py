@@ -261,7 +261,7 @@ USER_TEXT = {
     "hero_sub": "Upload your resume and get a score, the problems that hold it back, and how to fix them. Add a job "
                 "to see how well you match it.",
     "ticks": ["No account needed", "Clear score with the biggest problems first",
-              "Your resume is used only to create this report"],
+              "Your resume is analysed only to create this report"],
     "upload_title": "Check your resume",
     "uploader": "Your resume (PDF)", "drop": "Drop your resume here or", "browse": "browse",
     "drop_hint": "PDF · up to 10 MB",
@@ -271,7 +271,8 @@ USER_TEXT = {
     "check": "Check my resume", "new": "Check another resume",
     "checking": "Checking your resume. This usually takes 20 to 60 seconds...",
     "limit": "You are out of limit. Go premium to try it again.",
-    "privacy": "Your resume is used only to create this report. The file is deleted after {days} days.",
+    "privacy": "Your resume is analysed with a trusted AI provider to create this report, and for nothing else. "
+               "The file is deleted after {days} days.",
     "steps": [("01", "Upload", "Add your resume as a PDF, and a job if you have one in mind."),
               ("02", "Get your score", "See how readable, complete and well built your resume is."),
               ("03", "Fix what matters", "Start with the problems that lower your score the most.")],
