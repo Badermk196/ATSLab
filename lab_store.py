@@ -18,6 +18,7 @@ import re
 import sqlite3
 import threading
 
+import lab_db
 import lab_text as T
 
 DB_NAME = "atslab.db"
@@ -117,6 +118,8 @@ class Store:
         self.files = os.path.join(folder, FILES)
         os.makedirs(self.files, exist_ok=True)
         self.path = os.path.join(folder, DB_NAME)
+        self.postgres = lab_db.is_postgres()          # a server keeps the data in Postgres (Neon), a computer in
+                                                      # the local file; both are used the same way (see lab_db.py)
         self._last_clean = None
         self._lock = threading.Lock()
         con = self.db()
@@ -131,9 +134,7 @@ class Store:
             con.close()
 
     def db(self):
-        con = sqlite3.connect(self.path, timeout=30)
-        con.row_factory = sqlite3.Row
-        return con
+        return lab_db.connect(self.path)
 
     def _run(self, sql, args=()):
         con = self.db()
@@ -187,10 +188,11 @@ class Store:
         return self._atomic(work)
 
     def release_check(self, keys, at=None):
-        """Give back a counted check (it ended with a message, not a score)."""
+        """Give back a counted check (it ended with a message, not a score). The latest day of that key is found
+        by its own key (day, who) instead of SQLite's rowid, so the same SQL works on Postgres too."""
         self._atomic(lambda con: [con.execute(
-            "UPDATE daily_checks SET n = MAX(0, n - 1) WHERE rowid = "
-            "(SELECT rowid FROM daily_checks WHERE who = ? ORDER BY day DESC, rowid DESC LIMIT 1)", (k,))
+            "UPDATE daily_checks SET n = MAX(0, n - 1) WHERE (day, who) = "
+            "(SELECT day, who FROM daily_checks WHERE who = ? ORDER BY day DESC LIMIT 1)", (k,))
             for k in keys])
 
     def checks_today(self, keys, at=None):
@@ -402,14 +404,23 @@ class Store:
                     gone = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
                     for t in tables:
                         con.execute(f"DELETE FROM {t}")
-                    try:
-                        marks = ", ".join("?" for _ in tables)
-                        con.execute(f"DELETE FROM sqlite_sequence WHERE name IN ({marks})", tables)
-                    except sqlite3.OperationalError:
-                        pass
+                    self._reset_ids(con, tables)
             finally:
                 con.close()
         return gone
+
+    def _reset_ids(self, con, tables):
+        """New rows start at 1 again: SQLite keeps its counters in sqlite_sequence, Postgres in one sequence per
+        table (a table without an id, e.g. settings, simply has none)."""
+        if self.postgres:
+            for t in tables:
+                con.execute(f"ALTER SEQUENCE IF EXISTS {t}_id_seq RESTART WITH 1")
+            return
+        try:
+            marks = ", ".join("?" for _ in tables)
+            con.execute(f"DELETE FROM sqlite_sequence WHERE name IN ({marks})", tables)
+        except sqlite3.OperationalError:
+            pass
 
     def clear_checks(self):
         """A fresh History and Needs review: every check goes, with its kept resume file.
