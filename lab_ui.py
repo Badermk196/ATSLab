@@ -70,9 +70,9 @@ def theme_kind():
     """The app's own theme: "light" or "dark", read from Streamlit's setting (the visitor's choice in the app menu).
     None when it cannot be read (outside a running app), so the system's own dark mode is used, as before.
 
-    st.context.theme is a mapping (a TypedDict), so it must be read with .get(). Reading it with getattr() always
-    returned None, which is why the cards stayed white on a dark page: the code fell back to the operating system's
-    theme instead of the app's own one."""
+    st.context.theme is a mapping (a TypedDict), so it must be read with .get(). This value alone is not trusted to
+    force the light palette any more (see theme_css): it reported "light" on a page the browser drew dark, which is
+    how the cards came out white on a dark page."""
     try:
         import streamlit as st
     except Exception:
@@ -94,14 +94,32 @@ def theme_kind():
     return None
 
 
+def saved_base():
+    """The theme pinned in .streamlit/config.toml ("light", "dark"), or None when the app follows the visitor's own
+    setting. Only a pinned light base is trusted enough to force the light palette: it is the app's own written
+    setting, so the page really is light on every computer."""
+    try:
+        import streamlit as st
+        base = st.get_option("theme.base")
+    except Exception:
+        return None
+    return base if base in ("light", "dark") else None
+
+
 def theme_css():
-    """The palette that matches the app's own theme. The system's dark mode is not enough: a visitor can set the app
-    to dark while the computer stays light, and the cards then came out white on a dark page. Empty when the theme
-    cannot be read, so PALETTE's own rule stays in charge."""
+    """The palette that matches what the page really shows.
+
+    Dark wins as soon as the page is dark: white cards on a dark page are the one thing that must never happen.
+    The light palette is forced only when it is certain (the app's own setting says light AND config.toml pins the
+    base to light). When the app follows the visitor's own setting, PALETTE's @media rule decides, which is what the
+    browser really uses. (Real bug: a page came out with white cards while the browser drew it dark, because the
+    app's setting said "light" while the visitor's computer was dark.)
+
+    Empty when nothing is certain, so PALETTE's own rule stays in charge."""
     kind = theme_kind()
     if kind == "dark":
         return "\n:root {" + DARK_VARS + "}"
-    if kind == "light":
+    if kind == "light" and saved_base() == "light":
         return "\n:root {" + LIGHT_VARS + "}"
     return ""
 

@@ -52,16 +52,12 @@ def start_page(kind="user", extra_css=""):
     older than `file_days`, at most every few minutes)."""
     S.apply_api_key()
     parts = (UI.ADMIN, D.REPORT_CSS) if kind == "admin" else (UI.USER,)
-    # The report's own colors are light (white cards) so the PDF prints cleanly. Inside the app, when the visitor
-    # uses the dark theme, the cards must follow the app's dark palette instead of staying white.
-    dark = ""
-    if kind == "admin":
-        theme = UI.theme_kind()
-        if theme == "dark":
-            dark = D.REPORT_DARK_CSS
-        elif theme is None:                     # the theme cannot be read: follow the computer's setting
-            dark = "@media (prefers-color-scheme: dark) {" + D.REPORT_DARK_CSS + "}"
-    st.markdown(UI.css(*parts, extra=extra_css + dark), unsafe_allow_html=True)
+    # The report's own colors are light (white cards) because the downloadable PDF and the saved HTML are always
+    # printed on white paper. Inside the app the same cards are drawn with the page's own palette (REPORT_SCREEN_CSS),
+    # so a report card is the same color as the other cards of the page, in light AND dark mode. No theme detection
+    # is needed: the palette already follows the app's theme.
+    screen = D.REPORT_SCREEN_CSS if kind == "admin" else ""
+    st.markdown(UI.css(*parts, extra=extra_css + screen), unsafe_allow_html=True)
     if not st.session_state.get("temp_cleaned"):
         D.clean_temp()
         st.session_state["temp_cleaned"] = True

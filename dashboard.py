@@ -961,12 +961,17 @@ def is_title_mismatch(i):
 
 
 def issue_cards(r):
-    """One card per issue (internal ids grouped), sorted by points gained. -> list of dicts."""
+    """One card per issue (internal ids grouped), sorted by points gained. -> list of dicts.
+
+    "key" is the card's fixed type (the ISSUES entry). "uid" is the card's own id on the page: two AI findings are
+    two cards with the same "key" but different "uid"s, so their buttons and their set-aside state never collide
+    (a repeated Streamlit key crashed the report when a resume had more than one AI finding)."""
     rank = {"Critical": 0, "Major": 1, "Minor": 2}
     cards, title_ai = {}, []
     def ai_card(i):                                   # an AI finding: its own card, in its own words
         t = ISSUES["ai_finding"]
-        cards[i["id"]] = {"key": "ai_finding", "points": i["points"], "severity": i["severity"], "issues": [i],
+        cards[i["id"]] = {"key": "ai_finding", "uid": f"ai_finding::{i['id']}", "points": i["points"],
+                          "severity": i["severity"], "issues": [i],
                           "show": "quotes", "ai": True, "name": i["name"] or t["name"],
                           "why": i["ai"]["why"] or t["why"], "fix": i["ai"]["fix"] or t["fix"]}
     for i in r["issues"]:
@@ -979,7 +984,7 @@ def issue_cards(r):
         key = ISSUE_OF.get(i["id"])
         if not key:
             continue
-        c = cards.setdefault(key, {"key": key, "points": 0.0, "severity": "Minor", "issues": []})
+        c = cards.setdefault(key, {"key": key, "uid": key, "points": 0.0, "severity": "Minor", "issues": []})
         c["points"] = max(c["points"], i["points"])
         if rank[i["severity"]] < rank[c["severity"]]:
             c["severity"] = i["severity"]
@@ -1328,11 +1333,59 @@ body {background: #f3f5f9; margin: 0; padding: 24px;}
   .rp details.more > summary {display: none;}
 }
 """
-# Streamlit's own containers
 # The report's own colors are light (white cards) because the downloadable PDF and the saved HTML are always
-# printed on white paper. Inside the app, when the visitor uses the dark theme, the same cards are drawn in the
-# app's dark palette instead: the cards must never be white on a dark page. The exported report keeps the light
-# colors, so the PDF still prints cleanly.
+# printed on white paper. Inside the app the SAME cards are drawn with the app's own palette (lab_ui's --a-... colors),
+# so a report card is always the same color as the other cards of the page, in light AND dark mode. The exported
+# report keeps the light colors, so the PDF still prints cleanly. Every var() has a light fallback, so the report
+# still looks right where the palette is not loaded (e.g. dashboard.py run on its own).
+REPORT_SCREEN_CSS = """
+.stApp .rp {color: var(--a-text, #0f172a);}
+.stApp .rp .card, .stApp .rp .pill, .stApp .rp details.iss, .stApp .rp details.more > summary,
+.stApp .rp .ci, .stApp .rp .imv, .stApp .rp .fx, .stApp .rp .cmp > div {
+  background: var(--a-card, #fff); border-color: var(--a-line, #e2e8f0); color: var(--a-text, #0f172a);}
+.stApp .rp .rh {border-bottom-color: var(--a-line, #e2e8f0);}
+.stApp .rp .rh h1, .stApp .rp .app, .stApp .rp .big, .stApp .rp .ph .n, .stApp .rp .ph .v,
+.stApp .rp .it .t, .stApp .rp .wf b, .stApp .rp .count b, .stApp .rp .cmp .who, .stApp .rp .rm dd,
+.stApp .rp .fx .x b, .stApp .rp .imp h3 {color: var(--a-text, #0f172a);}
+.stApp .rp .muted, .stApp .rp .tag, .stApp .rp .rm dt, .stApp .rp .sub, .stApp .rp .cap, .stApp .rp .scale,
+.stApp .rp .also, .stApp .rp .it .m, .stApp .rp .barlbl, .stApp .rp .lead, .stApp .rp .plain,
+.stApp .rp .row.small, .stApp .rp .cmp .file, .stApp .rp table.pt th, .stApp .rp .fx .x span,
+.stApp .rp .pill .sz {color: var(--a-muted, #64748b);}
+.stApp .rp .bar {background: var(--a-line-2, #eef2f7);}
+.stApp .rp .sep, .stApp .rp .ib, .stApp .rp .ci .ib, .stApp .rp table.pt td, .stApp .rp table.pt th,
+.stApp .rp .code.aft {border-color: var(--a-line, #e2e8f0);}
+.stApp .rp .num {background: var(--a-line-2, #f1f5f9); color: var(--a-muted, #334155);}
+.stApp .rp .num.Important {background: var(--a-warn-tint, #fef3c7); color: var(--a-warn, #92400e);}
+.stApp .rp .num.Critical {background: var(--a-bad-bg, #fee2e2); color: var(--a-bad, #991b1b);}
+.stApp .rp .gain {background: var(--a-ok-bg, #dcfce7); color: var(--a-ok, #166534);}
+.stApp .rp .gain.wait {background: var(--a-line-2, #f1f5f9); color: var(--a-muted, #64748b);}
+.stApp .rp .ok {color: var(--a-ok, #166534);}
+.stApp .rp .row .pt b {color: var(--a-bad, #dc2626);}
+.stApp .rp .row .pt span {color: var(--a-ok, #16a34a);}
+.stApp .rp .barlbl .aft, .stApp .rp .big b, .stApp .rp .blk {color: var(--a-warn, #b45309);}
+.stApp .rp .note {background: var(--a-warn-tint, #fef3c7); color: var(--a-warn, #92400e);}
+.stApp .rp .cmp .chg {color: var(--a-ok, #16a34a);}
+.stApp .rp .wf > div {background: var(--a-line-2, #f8fafc); color: var(--a-text, #334155);}
+.stApp .rp .code.now {background: var(--a-cta, #0f172a); color: var(--a-cta-text, #e2e8f0);}
+.stApp .rp .code.aft {background: var(--a-ok-bg, #f0fdf4); color: var(--a-ok, #14532d);}
+.stApp .rp .code .new {background: var(--a-ok-bg, #dcfce7);}
+.stApp .rp .code .gone {color: var(--a-warn, #fbbf24);}
+.stApp .rp .imp .why {background: var(--a-cta, #0f172a); color: var(--a-cta-text, #fff);
+  border-color: var(--a-line, #0f172a);}
+.stApp .rp .imp .why h3, .stApp .rp .imp .why .wl {color: var(--a-cta-text, #fff);}
+.stApp .rp .fx .d {background: var(--a-pri, #1d4ed8); color: #fff;}
+.stApp .rp .fx .p {color: var(--a-ok, #16a34a);}
+.stApp .rp .wl i {background: var(--a-pri, #1e40af); color: #fff;}
+.stApp .rp .chip {background: var(--a-pri-soft, #eef2ff); color: var(--a-pri, #3730a3);}
+.stApp .rp .chip.req {background: var(--a-bad-bg, #fee2e2); color: var(--a-bad, #991b1b);}
+.stApp .rp .switch {background: var(--a-line-2, #f1f5f9); border-color: var(--a-line, #e2e8f0);}
+.stApp .rp .switch span {color: var(--a-muted, #64748b);}
+.stApp .rp .switch span.on {background: var(--a-card, #fff); color: var(--a-text, #0f172a);}
+.stApp .rp .imv .chd {color: var(--a-text, #334155);}
+.stApp .rp .imv .chd b {color: var(--a-ok, #16a34a);}
+.stApp .rp .best-tag {background: var(--a-warn, #f59e0b); color: #fff;}
+"""
+# The dark-only rules, kept for anything that still asks for them (the saved HTML and the PDF never do).
 REPORT_DARK_CSS = """
 .stApp .rp {color: #e5e7eb;}
 .stApp .rp .card, .stApp .rp .pill, .stApp .rp details.iss, .stApp .rp details.more > summary,
@@ -1676,6 +1729,11 @@ def set_aside_key(r):
     return f"set_aside::{r.get('cv')}::{r.get('score')}"
 
 
+def card_uid(c):
+    """The card's own id on the page: its "uid", or its "key" for a card made before "uid" existed."""
+    return c.get("uid") or c["key"]
+
+
 def set_aside_cards(r):
     """The card keys the team set aside for this result."""
     return list(st.session_state.get(set_aside_key(r)) or [])
@@ -1686,7 +1744,7 @@ def set_aside_ids(r):
     keys = set(set_aside_cards(r))
     if not keys:
         return set()
-    return {i["id"] for c in issue_cards(r) if c["key"] in keys for i in c["issues"]}
+    return {i["id"] for c in issue_cards(r) if card_uid(c) in keys for i in c["issues"]}
 
 
 def view_with(r, set_aside):
@@ -1780,21 +1838,21 @@ def set_aside_controls(r, trainer=None, training=None):
     key, off = set_aside_key(r), set(set_aside_cards(r))
     ask = f"{key}::ask"
     pending = st.session_state.get(ask)
-    pending = pending if any(c["key"] == pending for c in cards) else None
+    pending = pending if any(card_uid(c) == pending for c in cards) else None
     with st.expander(REPORT_TEXT["set_aside"], expanded=bool(off) or pending is not None):
         st.caption(REPORT_TEXT["set_aside_sub"].format(n=len(off)) if off else REPORT_TEXT["set_aside_none"])
         cols = st.columns(2, gap="small")
         for n, c in enumerate(cards):
-            back = c["key"] in off
+            back = card_uid(c) in off
             label = REPORT_TEXT["set_aside_back" if back else "set_aside_x"].format(name=c["name"])
-            if cols[n % 2].button(label, key=f"{key}::{c['key']}", width="stretch"):
+            if cols[n % 2].button(label, key=f"{key}::{card_uid(c)}", width="stretch"):
                 if back:
-                    put_aside(r, c["key"], False)
+                    put_aside(r, card_uid(c), False)
                     st.session_state.pop(ask, None)
                 else:
-                    st.session_state[ask] = c["key"]          # ask why first: the reason is the teaching signal
+                    st.session_state[ask] = card_uid(c)       # ask why first: the reason is the teaching signal
                 st.rerun()
-        card = next((c for c in cards if c["key"] == pending), None)
+        card = next((c for c in cards if card_uid(c) == pending), None)
         if card is not None:
             st.markdown(f"**{TRAIN_TEXT['ask']}**  \n{card['name']}")
             reason = st.radio(TRAIN_TEXT["ask"], list(TRAIN_REASONS), format_func=TRAIN_REASONS.get,
@@ -1808,7 +1866,7 @@ def set_aside_controls(r, trainer=None, training=None):
                         trainer(r, card, reason, note, card_evidence(r, card))
                     except Exception as e:      # the X must still work if the teaching log cannot be saved
                         st.warning(TRAIN_TEXT["not_saved"].format(why=type(e).__name__))
-                put_aside(r, card["key"], True)
+                put_aside(r, card_uid(card), True)
                 for k in (ask, f"{ask}::reason", f"{ask}::note"):
                     st.session_state.pop(k, None)
                 st.toast(TRAIN_TEXT["saved"])
@@ -2530,7 +2588,7 @@ def render_client(old, new, swapped=None):
         st.caption(CLIENT_TEXT["swapped"].format(ours=new["cv"], original=old["cv"]))
     slot = st.empty()
     slot.caption(REPORT_TEXT["pdf_preparing"])
-    st.markdown(f"<style>{CLIENT_CSS}</style>", unsafe_allow_html=True)
+    st.markdown(f"<style>{CLIENT_CSS}{REPORT_SCREEN_CSS}</style>", unsafe_allow_html=True)
     html_block(comparison_body(old, new))
     show_download(slot, new, None, original=old)
 
@@ -2662,7 +2720,7 @@ def main(after_check=None, page_config=True, below_top=None, gate=None):
     if not st.session_state.get("temp_cleaned"):     # once per session: old left-over temp files
         clean_temp()
         st.session_state["temp_cleaned"] = True
-    st.markdown(CSS + (REPORT_DARK_CSS if dark_theme() else ""), unsafe_allow_html=True)
+    st.markdown(CSS + REPORT_SCREEN_CSS, unsafe_allow_html=True)
     saved = st.session_state.get("result") if isinstance(st.session_state.get("result"), dict) else None
     if saved and "mode" not in st.session_state:             # the switch shows how the result was made
         st.session_state["mode"] = WITH_JOB if saved.get("with_job") else WITHOUT_JOB

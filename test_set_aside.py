@@ -322,5 +322,52 @@ class TestTrainingOnThePage(unittest.TestCase):
         self.assertFalse(any(D.TRAIN_TEXT["log_title"] in str(m.value) for m in at.markdown))
 
 
+# ---------------------------------------------------------------------------
+# Two AI findings on one resume: two cards, two ids (a real bug: the page crashed)
+# ---------------------------------------------------------------------------
+def two_findings(r):
+    """The result with two AI findings added: the reviewer found two things the rules do not cover."""
+    ai = [{"id": "AI1", "part": "content", "points": 2.0, "severity": "Major", "name": "Achievement without a number",
+           "ai": {"why": "The achievement says what was done but not how much it changed.",
+                  "fix": "Add the number, e.g. 12% faster."}},
+          {"id": "AI2", "part": "content", "points": 1.0, "severity": "Minor", "name": "Long sentence in the summary",
+           "ai": {"why": "A very long sentence is hard to read at a glance.",
+                  "fix": "Split it into two short sentences."}}]
+    return {**r, "issues": list(r["issues"]) + ai}
+
+
+def two_findings_page():
+    """A tiny app: the set-aside control of a report that carries two AI findings. The control is drawn on its own
+    (the whole report needs the scorer's own counterfactual for every issue, which a made-up finding cannot have)."""
+    import tempfile
+
+    import cv_score as C
+    import dashboard as D
+    import test_set_aside as T
+
+    cache = tempfile.mkdtemp()
+    T.seed(cache)
+    r = C.score_cv("jane.pdf", None, T.ROLE, doc=T.fake_doc(T.CV), role_cache=cache)
+    D.set_aside_controls(T.two_findings(r))
+
+
+class TestTwoAiFindings(Base):
+    def test_two_findings_are_two_cards_with_their_own_id(self):
+        """Guard: both cards used to carry the same key, so the page raised StreamlitDuplicateElementKey."""
+        cards = D.issue_cards(two_findings(self.r))
+        ids = [D.card_uid(c) for c in cards]
+        self.assertEqual(len(ids), len(set(ids)), "two cards share the same id on the page")
+        self.assertEqual(len([c for c in cards if c.get("ai")]), 2, "the two AI findings must be two cards")
+
+    def test_the_page_draws_both_findings_without_crashing(self):
+        at = AppTest.from_function(two_findings_page, default_timeout=300).run()
+        self.assertFalse(at.exception, at.exception)
+        x = [b for b in at.button if b.label.startswith("✕")]
+        self.assertGreaterEqual(len(x), 2, "both AI findings need their own X button")
+        labels = [" ".join(b.label.split()) for b in at.button]
+        self.assertIn("✕ Achievement without a number", labels)
+        self.assertIn("✕ Long sentence in the summary", labels)
+
+
 if __name__ == "__main__":
     unittest.main()
