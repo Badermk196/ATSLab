@@ -275,7 +275,7 @@ class Store:
                 return False
             for k in keys:
                 con.execute("INSERT INTO daily_checks (day, who, n) VALUES (?, ?, 1) "
-                            "ON CONFLICT(day, who) DO UPDATE SET n = n + 1", (day, k))
+                            "ON CONFLICT(day, who) DO UPDATE SET n = daily_checks.n + 1", (day, k))
             return True
         return self._atomic(work)
 
@@ -306,7 +306,7 @@ class Store:
         def work(con):
             for k in keys:
                 con.execute("INSERT INTO login_guard (who, tries) VALUES (?, 1) "
-                            "ON CONFLICT(who) DO UPDATE SET tries = tries + 1", (k,))
+                            "ON CONFLICT(who) DO UPDATE SET tries = login_guard.tries + 1", (k,))
                 if con.execute("SELECT tries FROM login_guard WHERE who = ?", (k,)).fetchone()[0] >= max_tries:
                     con.execute("UPDATE login_guard SET tries = 0, locked_until = ? WHERE who = ?",
                                 (t + lock_seconds, k))

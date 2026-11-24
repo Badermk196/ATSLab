@@ -8,6 +8,7 @@ is safe to run anywhere. It writes one settings row and removes it again: it nev
 """
 
 import os
+import shutil
 import tempfile
 import unittest
 from unittest import mock
@@ -287,6 +288,33 @@ class TestLivePostgres(unittest.TestCase):
             finally:
                 store.delete_bug(bid)
             self.assertIsNone(store.bug(bid))
+
+
+class TestPostgresOnlyMistakes(unittest.TestCase):
+    """SQLite accepts some SQL that Postgres refuses; the tests run on SQLite, so they are guarded here by reading
+    the SQL. Real bug (live app): "ON CONFLICT ... DO UPDATE SET n = n + 1" is AmbiguousColumn in Postgres."""
+
+    def test_an_upsert_never_reads_its_own_column_without_the_table_name(self):
+        import re
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "lab_store.py"), encoding="utf-8") as f:
+            source = f.read()
+        updates = re.findall(r"DO UPDATE SET (.*?)\"", source)
+        self.assertGreaterEqual(len(updates), 4)
+        for text in updates:
+            for column, value in re.findall(r"(\w+) = ([^,]+)", text):
+                bare = re.search(r"(?<![\w.])" + column + r"(?!\w)", value)
+                self.assertFalse(bare and not value.startswith("excluded."),
+                                 f"'{column} = {value}' needs the table name before the column (Postgres)")
+
+    def test_the_counters_still_count_on_sqlite(self):
+        folder = tempfile.mkdtemp()
+        try:
+            store = lab_store.Store(folder)
+            for _ in range(3):
+                store.reserve_check(["browser:t"], 10)
+            self.assertEqual(store.checks_today(["browser:t"]), 3)
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
 
 
 if __name__ == "__main__":
