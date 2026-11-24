@@ -15,11 +15,15 @@ import dashboard as D
 import lab_settings as S
 import lab_store as H
 import lab_text as T
+import lab_timing as TM
 import lab_ui as UI
+import lab_version as V
+import lab_warmup as W
 
 MAX_RUNNING = 3                 # checks running at the same time; the others wait in the queue
 QUEUE_POLL = 1.0                # seconds between two updates of "N people ahead of you"
 BROWSER_COOKIE = "atsl_browser"
+THEME_COOKIE = "atsl_theme"     # the visitor's light / dark choice (the sun / moon button)
 ADMIN_COOKIE = "atsl_admin"     # the Admin page's "stayed signed in" token (never a password)
 QUEUE_TEXT = T.QUEUE_TEXT       # the texts are in lab_text.py
 
@@ -50,6 +54,8 @@ def start_page(kind="user", extra_css=""):
     """Every page, every run: the key from the secrets, the style (lab_ui: kind "admin" also styles the full report,
     "user" the landing page and the short result), and the clean-ups (old temp files once per session; resume files
     older than `file_days`, at most every few minutes)."""
+    TM.reset()                              # this page run's timing count (lab_timing.py)
+    W.start()                               # the AI model loads in the background (lab_warmup.py), once per server
     S.apply_api_key()
     parts = (UI.ADMIN, D.REPORT_CSS) if kind == "admin" else (UI.USER,)
     # The report's own colors are light (white cards) because the downloadable PDF and the saved HTML are always
@@ -57,7 +63,7 @@ def start_page(kind="user", extra_css=""):
     # so a report card is the same color as the other cards of the page, in light AND dark mode. No theme detection
     # is needed: the palette already follows the app's theme.
     screen = D.REPORT_SCREEN_CSS if kind == "admin" else ""
-    st.markdown(UI.css(*parts, extra=extra_css + screen), unsafe_allow_html=True)
+    st.markdown(UI.css(*parts, extra=extra_css + screen, choice=theme_choice()), unsafe_allow_html=True)
     if not st.session_state.get("temp_cleaned"):
         D.clean_temp()
         st.session_state["temp_cleaned"] = True
@@ -65,6 +71,45 @@ def start_page(kind="user", extra_css=""):
         store().maybe_cleanup(setting("file_days"))
     except Exception:                       # a clean-up problem never stops a page
         pass
+
+
+def theme_choice():
+    """"light" or "dark" when this visitor pressed the sun / moon button (remembered in a cookie of their browser), else
+    None: the app then follows the visitor's own system setting. Read from the cookie once per session."""
+    if "atsl_theme" not in st.session_state:
+        try:
+            known = st.context.cookies.get(THEME_COOKIE)
+        except Exception:
+            known = None
+        st.session_state["atsl_theme"] = known if known in ("light", "dark") else None
+    return st.session_state["atsl_theme"]
+
+
+def _flip_theme(current):
+    """The button's action: dark -> light, light -> dark. With no choice yet, the opposite of what the page shows."""
+    st.session_state["atsl_theme"] = "light" if current == "dark" else "dark"
+
+
+def theme_toggle():
+    """The sun / moon button, top right of every page. It switches the whole app (cards, ring, inputs) and the choice
+    is kept in a cookie for a year. With no choice yet the page shows the app's own theme (the visitor's system
+    setting), so the first press goes to the other one."""
+    choice = theme_choice()
+    showing = choice or UI.theme_kind() or "light"
+    with st.container(key="theme-toggle"):
+        st.button("", icon=":material/light_mode:" if showing == "dark" else ":material/dark_mode:",
+                  key="theme_btn", type="tertiary", on_click=_flip_theme, args=(showing,),
+                  help="Switch to light mode" if showing == "dark" else "Switch to dark mode")
+    chosen = st.session_state.get("atsl_theme")
+    if chosen and st.session_state.get("atsl_theme_cookie") != chosen:        # write the cookie only when it changed
+        st.html(f'<script>document.cookie = "{THEME_COOKIE}={chosen}; Max-Age=31536000; Path=/; SameSite=Lax";'
+                f'</script>', unsafe_allow_javascript=True)                    # only "light" or "dark", never user input
+        st.session_state["atsl_theme_cookie"] = chosen
+
+
+def version_line():
+    """The small grey line at the bottom of the Admin page: which commit and date this server runs."""
+    st.markdown(f'<div class="a-version">{UI.esc(V.line())}</div>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +250,7 @@ def check_slot(queue=None):
         raise
     box.empty()
     try:
+        W.wait()                            # the model is still loading in the background: wait for it, never load twice
         yield
     finally:
         q.done()

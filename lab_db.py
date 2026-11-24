@@ -18,6 +18,9 @@ The Postgres driver is imported only when a DATABASE_URL is set, so a computer w
 
 import os
 import re
+import time
+
+import lab_timing as _timing
 
 # Tables whose new id is wanted after an INSERT (checks.add_check uses it; the others are harmless).
 INSERT_RETURNING_ID = ("checks", "training", "admin_log", "bugs")
@@ -228,8 +231,10 @@ class PgConnection:
         if insert and insert.group(1).lower() in INSERT_RETURNING_ID and "returning" not in text.lower():
             text += " RETURNING id"
             wanted_id = True
+        began = time.perf_counter()
         cur = self._con.cursor()
         cur.execute(text, tuple(args))
+        _timing.add("database", time.perf_counter() - began)
         out = PgCursor(cur)
         if wanted_id:
             row = cur.fetchone()
@@ -251,7 +256,14 @@ class PgConnection:
             self._con.rollback()
         return False
 
+    keep_open = False           # the Store sets it on the connection it reuses: close() then does nothing
+
     def close(self):
+        if self.keep_open:
+            return
+        self.force_close()
+
+    def force_close(self):
         try:
             self._con.close()
         except Exception:

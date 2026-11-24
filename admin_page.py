@@ -643,10 +643,9 @@ def second_card(saved, checker, job_text):
             if weak:
                 st.markdown(f'<div class="so-note">{UI.esc(SECOND_TEXT["weakest"].format(list=", ".join(weak[:4])))}'
                             f'</div>', unsafe_allow_html=True)
-        a, b = st.columns([2, 1], vertical_alignment="center")
-        a.markdown(f'<div class="so-when">{UI.esc(SECOND_TEXT["checked"].format(
+        st.markdown(f'<div class="so-when">{UI.esc(SECOND_TEXT["checked"].format(
             when=ago(answer.get("checked_at"))))}</div>', unsafe_allow_html=True)
-        if b.button(SECOND_TEXT["again"], key=f"so_again_{checker}_{key}", width="stretch"):
+        if st.button(SECOND_TEXT["again"], key=f"so_again_{checker}_{key}", width="stretch"):   # its own full-width row
             st.session_state[key] = {"state": SO.CHECKING}
             st.rerun()
 
@@ -655,12 +654,12 @@ def second_opinion(saved):
     """The whole section: its title, the three cards, the benchmark and the note that it never changes
     the Lab score."""
     job_text = (saved.get("inputs") or {}).get("text") or ""
-    order = SO.visible_order()          # ATS Checker 3 is hidden until its engine is installed
+    order = SO.visible_order(second_on("lever"))   # ATS Checker 3: only when installed; LeverParser: only when on
     answers = {c: st.session_state.get(second_key(saved, c)) for c in order}
     head = SO.headline(answers)
     st.markdown(
         f'<div class="so-head"><div><span class="so-title"><span class="so-num">2</span>'
-        f'{UI.esc(SECOND_TEXT["title"])}</span><span class="so-sub">{UI.esc(SECOND_TEXT["sub"])}</span></div>'
+        f'{UI.esc(SECOND_TEXT["title"])}</span><span class="so-sub">{UI.esc(SECOND_TEXT["sub"].format(n=len(order)))}</span></div>'
         + (f'<div class="so-head-right{" grey" if not head.startswith("Both") else ""}">{UI.esc(head)}</div>'
            if head else "") + "</div>", unsafe_allow_html=True)
     cols = st.columns(len(order), gap="medium")
@@ -677,7 +676,7 @@ def benchmark(saved, answers):
     res = saved.get("res") or {}
     rows = [(SECOND_TEXT["bench_lab"], round(res.get("score") or 0), SO.label_for(res.get("score")),
              SECOND_TEXT["bench_lab_note"])]
-    for checker in SO.visible_order():
+    for checker in SO.visible_order(second_on("lever")):
         answer = answers.get(checker) or {}
         if answer.get("state") != SO.DONE or answer.get("score") is None:
             continue
@@ -1521,6 +1520,11 @@ def bugs_view(who):
 
 
 def admin():
+    admin_body()
+    P.theme_toggle()                                    # the sun / moon button (fixed top right): drawn last
+
+
+def admin_body():
     who = st.session_state.get("admin") or restore_login()    # a browser that signed in before stays signed in
     if who and who not in S.admin_accounts():       # the account was removed: sign in again
         sign_out()
@@ -1528,6 +1532,7 @@ def admin():
     if not who:
         P.start_page("admin", "section[data-testid='stSidebar'] {display: none !important;}")
         login_card()
+        P.version_line()
         return
     view = current_view()
     n_review = len(store().needs_review(P.review_rules()))
@@ -1537,3 +1542,4 @@ def admin():
     sidebar(who, view)
     {"check": check_view, "history": history_view, "review": review_view, "settings": settings_view,
      "log": log_view, "bugs": bugs_view}[view](who)
+    P.version_line()

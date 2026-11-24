@@ -405,11 +405,12 @@ def headline(answers):
     return f"{n} of {len(judged)} checker{'s' if len(judged) != 1 else ''} agree with the Lab"
 
 
-def visible_order():
-    """The cards to draw: ATS Checker 3 only when its engine is installed on this server.
-    When it is installed, it appears again on its own (no setting to change)."""
+def visible_order(lever_on=False):
+    """The cards to draw. ATS Checker 3 only when its engine is installed on this server (it appears again on its
+    own when it is). LeverParser only when its setting is switched on (Settings > Second opinion; off for now).
+    The code of both stays: nothing is removed, only not drawn."""
     try:
         installed = bool(E.available()[0])
     except Exception:
         installed = False
-    return tuple(c for c in ORDER if c != "engine" or installed)
+    return tuple(c for c in ORDER if (c != "engine" or installed) and (c != "lever" or lever_on))

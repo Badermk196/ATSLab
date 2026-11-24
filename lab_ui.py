@@ -108,7 +108,7 @@ def saved_base():
     return base if base in ("light", "dark") else None
 
 
-def theme_css():
+def theme_css(choice=None):
     """The palette that matches what the page really shows.
 
     Dark wins as soon as the page is dark: white cards on a dark page are the one thing that must never happen.
@@ -117,7 +117,13 @@ def theme_css():
     browser really uses. (Real bug: a page came out with white cards while the browser drew it dark, because the
     app's setting said "light" while the visitor's computer was dark.)
 
-    Empty when nothing is certain, so PALETTE's own rule stays in charge."""
+    Empty when nothing is certain, so PALETTE's own rule stays in charge.
+
+    `choice` is the visitor's own pick with the sun / moon button ("light" or "dark"): it wins over the app's theme
+    and over the system's setting, and it also switches the browser's own controls (color-scheme)."""
+    if choice in ("light", "dark"):
+        return ("\n:root {" + (DARK_VARS if choice == "dark" else LIGHT_VARS) + f" color-scheme: {choice};}}"
+                f"\n.stApp {{color-scheme: {choice};}}")
     kind = theme_kind()
     if kind == "dark":
         return ("\n:root {" + DARK_VARS + "}"
@@ -132,6 +138,16 @@ BASE = """
    (stMain), which is why the content keeps exactly the same width on every view. Only that element: any other
    container would take its own 10px and the page would just be narrower. The sidebar has its own rule below. */
 [data-testid="stMain"] {scrollbar-gutter: stable;}
+/* the sun / moon button: fixed at the top right of every page (Streamlit's own empty toolbar must not cover it) */
+[data-testid="stToolbar"] {pointer-events: none;}
+[data-testid="stToolbar"] button, [data-testid="stToolbar"] a {pointer-events: auto;}
+[data-testid="stLayoutWrapper"]:has(> .st-key-theme-toggle), [data-testid="stElementContainer"]:has(> .st-key-theme-toggle),
+.st-key-theme-toggle {position: fixed; top: 12px; right: 14px; z-index: 1000001; width: auto !important;}
+.st-key-theme-toggle {position: static; top: auto; right: auto;}
+.st-key-theme-toggle button {min-height: 38px; width: 38px; padding: 0; border-radius: 12px; color: var(--a-text-2);
+  background: var(--a-card); border: 1px solid var(--a-line); box-shadow: var(--a-shadow);}
+.st-key-theme-toggle button:hover {background: var(--a-hover); color: var(--a-text);}
+.st-key-theme-toggle button [data-testid="stIconMaterial"] {font-size: 20px;}
 .stApp {background: var(--a-bg); color: var(--a-text);}
 .stApp, .stApp p, .stApp label, .stApp button, .stApp input, .stApp textarea, .stApp li, .stApp h1, .stApp h2,
 .stApp h3, .stApp [data-testid="stMarkdownContainer"], .stApp [data-testid="stCaptionContainer"],
@@ -159,6 +175,13 @@ header[data-testid="stHeader"] {background: transparent; pointer-events: none;}
 .stApp [data-baseweb="input"]:focus-within, .stApp [data-baseweb="textarea"]:focus-within {
   border-color: var(--a-pri) !important; box-shadow: 0 0 0 3px var(--a-pri-soft);}
 .stApp input, .stApp textarea {color: var(--a-text) !important;}
+/* the small "Saved ..." message follows the page colours too */
+.stApp [data-testid="stToast"], [data-testid="stToast"] {background: var(--a-card) !important; color: var(--a-text) !important;
+  border: 1px solid var(--a-line); box-shadow: var(--a-shadow);}
+[data-testid="stToast"] * {color: var(--a-text) !important;}
+/* the inner field takes the card's colour: Streamlit's own theme may be the other mode (the visitor's choice) */
+.stApp [data-baseweb="base-input"], .stApp [data-baseweb="textarea"] textarea, .stApp [data-baseweb="input"] input,
+.stApp [data-baseweb="select"] input {background: transparent !important;}
 .stApp input::placeholder, .stApp textarea::placeholder {color: var(--a-faint) !important; opacity: 1;}
 
 /* buttons */
@@ -411,6 +434,7 @@ section[data-testid="stSidebar"] [class*="st-key-nav_"] button:hover {background
   text-overflow: ellipsis; white-space: nowrap;}
 .a-foot .rl {color: var(--a-muted); font-size: .8rem;}
 .a-ver {color: var(--a-faint); font-size: .75rem; padding: 8px 10px 0 10px; max-width: 100%;}
+.a-version {color: var(--a-faint); font-size: .75rem; text-align: center; margin: 36px 0 8px 0;}
 .st-key-side-card [data-testid="stHorizontalBlock"] {align-items: center; gap: 4px; flex-wrap: nowrap;}
 .st-key-side-card [data-testid="stColumn"] {min-width: 0 !important;}
 .st-key-side-card [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"] {align-items: flex-end;}
@@ -483,9 +507,18 @@ section[data-testid="stSidebar"] [class*="st-key-nav_"] button:hover {background
   font-size: .8rem;}
 .so-kw b {color: var(--a-text-2); font-weight: 600;}
 .so-foot {display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px;}
-.so-when {color: var(--a-muted); font-size: .76rem;}
+.so-when {color: var(--a-muted); font-size: .76rem; margin: 10px 0 6px 0;}
+.so-bench-head {display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 22px 0 6px 0;}
+.so-bench-head span {color: var(--a-muted); font-size: .85rem;}
+.so-bench th, .so-bench td {text-align: left; padding: 9px 12px; border: none; border-bottom: 1px solid var(--a-line);
+  color: var(--a-text);}
+.so-bench th {color: var(--a-muted); font-weight: 600; font-size: .8rem;}
 .so-section-note {color: var(--a-muted); font-size: .82rem; margin: 12px 0 4px 0;}
 .st-key-card-so-matcher, .st-key-card-so-checker2 {padding: 18px 20px;}
+/* "Check again" / "Check with ...": wide enough for its text, which never wraps to a second line */
+[class*="st-key-card-so-"] button {min-width: max-content; white-space: nowrap; padding-left: 16px;
+  padding-right: 16px;}
+[class*="st-key-card-so-"] button p {white-space: nowrap;}
 
 @media (max-width: 640px) {
   .block-container, [data-testid="stMainBlockContainer"] {padding-top: 60px !important;}
@@ -628,11 +661,38 @@ section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [da
 """
 
 
-def css(*parts, extra=""):
-    """The page's <style>: Inter, the palette (the app's own theme first), the base rules, the page's own rules and
-    `extra`."""
-    return (f'<style>@import url("{FONT_URL}");' + PALETTE + theme_css() + BASE
-            + "".join(parts) + extra + "</style>")
+RING_DARK_TEXT, RING_LIGHT_TEXT = "#FFFFFF", "#111827"
+RING_SELECTOR = ".stApp .atsl-gauge text.num, .stApp .a-ring .n"
+
+
+def ring_css(choice=None):
+    """The score number inside every ring (user page, admin page, history, review, report): a LITERAL colour, set in
+    the last rule of the page so nothing later can change it, and never read from a theme variable.
+    White (#FFFFFF) on a dark page, dark (#111827) on a light one. With no choice the browser's own setting decides
+    (the same one the palette follows)."""
+    def rule(color):
+        return f"{RING_SELECTOR} {{fill: {color} !important; color: {color} !important;}}"
+    if choice == "dark":
+        return rule(RING_DARK_TEXT)
+    if choice == "light":
+        return rule(RING_LIGHT_TEXT)
+    return (rule(RING_LIGHT_TEXT) + "@media (prefers-color-scheme: dark) {" + rule(RING_DARK_TEXT) + "}")
+
+
+def css(*parts, extra="", choice=None):
+    """The page's <style>: Inter, the palette (the visitor's choice first, then the app's own theme), the base rules,
+    the page's own rules, `extra`, and last the ring number's colour."""
+    return (f'<style>@import url("{FONT_URL}");' + PALETTE + theme_css(choice) + BASE
+            + "".join(parts) + extra + ring_css(choice or _kind_for_ring()) + "</style>")
+
+
+def _kind_for_ring():
+    """The mode the page really shows when the visitor made no choice: the app's own theme when it is certain
+    (dark, or light pinned in config.toml), else None (the browser's setting decides)."""
+    kind = theme_kind()
+    if kind == "dark" or (kind == "light" and saved_base() == "light"):
+        return kind
+    return None
 
 
 def css_text(text):

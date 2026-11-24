@@ -11,12 +11,14 @@ page reload never resets them).
 - No Streamlit here, so it can be tested directly. The folder comes from lab_settings.data_dir() (any server).
 """
 
+import copy
 import datetime as dt
 import json
 import os
 import re
 import sqlite3
 import threading
+import time
 
 import lab_db
 import lab_text as T
@@ -27,6 +29,7 @@ REVIEW_SCORE = 55                 # "Needs review": a score under this (the defa
 DEFAULT_RULES = {"score": REVIEW_SCORE, "critical": False, "contact": False}
 USER = "user"                     # who checked it, for a check made on the User page
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+READ_TTL = 20                    # seconds a kept read (settings, history rows, new-bug count) stays valid; any write here drops it
 CLEAN_EVERY = 600                 # seconds: cleanup_files() runs at most this often per store (see maybe_cleanup)
 
 SCHEMA = """
@@ -148,6 +151,12 @@ class Store:
         self._last_clean = None
         self._lock = threading.Lock()
         self._local = threading.local()          # one Postgres connection per thread (see db())
+        self.cache_reads = self.postgres         # the few reads every page asks for are kept for a moment (Neon is far)
+        self._cache = {}                         # (sql, args) -> (time, rows, write count)
+        self._writes = 0                         # every write made through this Store: it empties the cache
+        self._cache_lock = threading.Lock()
+        self._shared = None                      # ONE autocommit connection for single statements, used by every thread
+        self._shared_lock = threading.Lock()
         con = self.db()
         try:
             with con:
@@ -160,6 +169,27 @@ class Store:
             con.close()
 
     def db(self):
+        """A connection for a WRITE (or anything that may write): the kept reads are dropped, then the connection is
+        given. Reads that only read use _connection() and keep them."""
+        self._writes += 1
+        return self._connection()
+
+    def _single(self):
+        """The connection for ONE statement (a read, or a write that is a single INSERT / UPDATE). Postgres: one
+        autocommit connection shared by all the visitors' threads (psycopg serialises the calls), so a new visitor
+        does not pay for a new login to Neon. SQLite: a fresh connection, as always. Multi-statement transactions
+        (_atomic, add_check ...) never use it: they take db()."""
+        if not self.postgres:
+            return lab_db.connect(self.path)
+        with self._shared_lock:
+            if self._shared is None or getattr(self._shared, "closed", False):
+                con = lab_db.connect(self.path)
+                con.isolation_level = None       # autocommit
+                con.keep_open = True
+                self._shared = con
+            return self._shared
+
+    def _connection(self):
         """A connection to the database.
 
         Postgres (Neon) is reused per thread: opening a connection costs a network round trip and one page
@@ -171,11 +201,13 @@ class Store:
         if con is None or getattr(con, "closed", False):
             con = lab_db.connect(self.path)
             con.isolation_level = None           # autocommit: every statement is saved as it runs
+            con.keep_open = True                 # the callers' close() leaves it open: the next call reuses it
             self._local.con = con
         return con
 
     def _run(self, sql, args=()):
-        con = self.db()
+        self._writes += 1                        # a write: the kept reads are dropped
+        con = self._single()
         if self.postgres:                        # autocommit: nothing to save, the connection stays open
             return con.execute(sql, args)
         try:
@@ -184,8 +216,25 @@ class Store:
         finally:
             con.close()
 
+    def _kept(self, sql, args=()):
+        """_all() for the reads every page run asks for (settings, the history rows, the new-bug count). On a server
+        with a remote database each one costs a network round trip, so the answer is kept for READ_TTL seconds and
+        dropped at once by any write made here (_run, _atomic). A computer with the local file reads it every time."""
+        if not self.cache_reads:
+            return self._all(sql, args)
+        key = (sql, tuple(args))
+        with self._cache_lock:
+            hit = self._cache.get(key)
+            if hit and hit[2] == self._writes and time.monotonic() - hit[0] < READ_TTL:
+                return copy.deepcopy(hit[1])
+            writes = self._writes
+        rows = self._all(sql, args)
+        with self._cache_lock:
+            self._cache[key] = (time.monotonic(), copy.deepcopy(rows), writes)
+        return rows
+
     def _all(self, sql, args=()):
-        con = self.db()
+        con = self._single()                     # a read: it does not drop the kept reads
         if self.postgres:
             return [dict(r) for r in con.execute(sql, args).fetchall()]
         try:
@@ -295,7 +344,7 @@ class Store:
     def history(self, limit=1000, rules=None):
         """Every check, newest first (without the report text: the table needs only the summary). Each row's
         review_reasons follow the "Needs review" rules of now (`rules`, default DEFAULT_RULES)."""
-        rows = [decode(r) for r in self._all(
+        rows = [decode(r) for r in self._kept(
             f"SELECT {', '.join(c for c in COLUMNS if c not in HEAVY)}, id FROM checks ORDER BY id DESC LIMIT ?",
             (limit,))]
         for r in rows:
@@ -372,7 +421,7 @@ class Store:
 
     def activity(self, limit=2000):
         """Every logged action, newest first."""
-        return self._all("SELECT * FROM admin_log ORDER BY at DESC, id DESC LIMIT ?", (limit,))
+        return self._kept("SELECT * FROM admin_log ORDER BY at DESC, id DESC LIMIT ?", (limit,))
 
     # --- what the team teaches the Lab (the X on an issue card) ----------------------------------------------
     def add_training(self, admin, check_id, cv, job_title, score, card, reason, note="", evidence="", when=None):
@@ -435,7 +484,7 @@ class Store:
     def bugs(self, limit=500):
         """Every bug report, newest first. The screenshot itself is not read here: the page asks for one
         image at a time, so a long list stays fast."""
-        return self._all("SELECT id, created_at, who, kind, description, check_id, cv, target, score, state, "
+        return self._kept("SELECT id, created_at, who, kind, description, check_id, cv, target, score, state, "
                          "state_when, state_who, note, ai_model, ai_explanation, ai_fix, ai_error, "
                          "fixed_ok, golden_added, reference_passed, "
                          "CASE WHEN screenshot IS NULL THEN 0 ELSE 1 END AS has_image "
@@ -492,7 +541,7 @@ class Store:
 
     def new_bugs(self):
         """How many bug reports nobody has decided yet (the number beside the menu)."""
-        rows = self._all("SELECT COUNT(*) AS n FROM bugs WHERE state = ?", ("new",))
+        rows = self._kept("SELECT COUNT(*) AS n FROM bugs WHERE state = ?", ("new",))
         return int(rows[0]["n"]) if rows else 0
 
     def drop_bug_image(self, bid):
@@ -507,6 +556,11 @@ class Store:
     def cleanup_bug_images(self, days, at=None):
         """Delete the screenshots of bugs the team closed `days` days ago or more. -> how many were deleted."""
         cutoff = ((at or now()) - dt.timedelta(days=int(days))).strftime(TIME_FORMAT)
+        due = self._all("SELECT id FROM bugs WHERE screenshot IS NOT NULL "
+                        "AND state IN ('fixed', 'rejected') AND state_when IS NOT NULL AND state_when <= ?",
+                        (cutoff,))                  # a read: it runs at every opening of the Bug audit page
+        if not due:
+            return 0                                # nothing to delete: no write, the kept reads stay
         con = self.db()
         try:
             with con:
@@ -539,7 +593,7 @@ class Store:
             con.close()
 
     def saved_settings(self):
-        return {r["key"]: r["value"] for r in self._all("SELECT key, value FROM settings")}
+        return {r["key"]: r["value"] for r in self._kept("SELECT key, value FROM settings")}
 
     def save_setting(self, key, value, who):
         self._run("INSERT INTO settings (key, value, changed_by, changed_at) VALUES (?, ?, ?, ?) "

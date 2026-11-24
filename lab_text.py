@@ -206,7 +206,7 @@ DAYS = "{n} days"
 # Second opinion (Admin page only): four extra ATS checkers beside the Lab score. They read the Lab's own
 # numbers and never change them. All four run on this device: no resume leaves the computer.
 SECOND_TEXT = {
-    "title": "Second opinion", "sub": "4 extra ATS checkers",
+    "title": "Second opinion", "sub": "{n} extra ATS checkers",
     "head_all": "Both checkers agree with the Lab",
     "head_some": "{n} of {total} checkers agree with the Lab",
     "head_none": "No checker agrees with the Lab",

@@ -190,7 +190,8 @@ def check(inputs):
     r = None
     try:
         with P.check_slot(), st.spinner(USER_TEXT["checking"]):
-            r = D.run_check(inputs["pdf"], inputs["name"], with_job, inputs["text"], job_title=inputs["title"] or None)
+            r = D.run_check_reusing(inputs["pdf"], inputs["name"], with_job, inputs["text"],
+                                    job_title=inputs["title"] or None)
     except D.CheckError as e:
         msg = str(e)
         if "API key" in msg or "Keyword extraction failed" in msg or "AI service is busy" in msg:
@@ -255,6 +256,7 @@ def user():
         page()
     finally:
         P.browser_id()                                 # the browser's id cookie is set on the first visit
+    P.theme_toggle()                                   # the sun / moon button (fixed top right): drawn last
 
 
 def page():

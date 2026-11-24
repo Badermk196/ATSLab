@@ -185,11 +185,11 @@ class TestTheCheckers(unittest.TestCase):
 
 
 class TestTheSettings(unittest.TestCase):
-    def test_the_four_switches_exist_and_are_on_by_default(self):
+    def test_the_four_switches_exist_and_three_are_on_by_default(self):
         for key in ("second_matcher", "second_checker2", "second_engine", "second_lever"):
             self.assertIn(key, S.SETTINGS)
             self.assertIn(key, T.SETTINGS_TEXT)
-            self.assertTrue(S.SETTINGS[key][1])
+            self.assertEqual(S.SETTINGS[key][1], key != "second_lever")    # LeverParser's card is off for now
             self.assertFalse(S.get(key, {key: False}), "a saved off switch wins")
 
     def test_the_settings_view_shows_all_four_switches(self):
@@ -217,7 +217,7 @@ class TestTheCards(unittest.TestCase):
         self.assertFalse(at.exception, at.exception)
         body = page_text(at)
         self.assertIn("Second opinion", body)
-        self.assertIn("4 extra ATS checkers", body)
+        self.assertIn("4 extra ATS checkers", body)       # the harness switches every card on
         self.assertIn("Second opinions are for comparison only", body)
         self.assertIn("change the ATS Lab score.", body)
         self.assertIn("Not checked yet", body)

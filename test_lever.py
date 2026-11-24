@@ -98,7 +98,7 @@ class TestRegistration(unittest.TestCase):
         import lab_text as T
         self.assertIn("second_lever", P._TYPES)
         self.assertIn("second_lever", T.SETTINGS_TEXT)
-        self.assertEqual(P._TYPES["second_lever"][1], True)
+        self.assertEqual(P._TYPES["second_lever"][1], False)      # its card is hidden for now; Settings turns it on
 
     def test_card_texts_exist(self):
         import lab_text as T

@@ -30,6 +30,7 @@ import cv_cache as CC
 import cv_layout as Y
 import cv_review as R
 import cv_score as C
+import lab_reuse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = C.MODEL
@@ -2555,6 +2556,24 @@ def show_details(r):
                        + (f"; {ai['rejected']} left out because their quote is not in the resume" if ai["rejected"] else ""))
 
 
+def report_html(r, view, cards, set_aside):
+    """The two big HTML blocks of the report (the score and the parts; the issues, skills and improvements).
+    Streamlit draws the page again at every click, and building these takes about 0.7 s, so they are kept for this
+    visitor under the result's id and the issues set aside: the same result gives the same text, never rebuilt."""
+    memo = st.session_state.setdefault("report_html_memo", {})
+    uid = r.get("_uid")
+    key = (uid, tuple(sorted(set_aside_ids(r))) if set_aside else ())
+    if uid and key in memo:
+        return memo[key]
+    out = (score_html(view, cards) + parts_html(view, cards),
+           issues_html(view, cards) + skills_html(view) + improve_html(cards))
+    if uid:
+        while len(memo) >= 4:                       # a few, the newest: a visitor works on one result at a time
+            memo.pop(next(iter(memo)))
+        memo[key] = out
+    return out
+
+
 def render(r, with_job=None, previous=None, client=False, swapped=None, after_score=None, set_aside=False,
            trainer=None, training=None):
     if client and previous is not None:              # the client comparison report: its 3 sections only
@@ -2565,14 +2584,15 @@ def render(r, with_job=None, previous=None, client=False, swapped=None, after_sc
     cards = issue_cards(view)
     for note in view.get("notes") or []:            # a part that could not run on this computer, said plainly
         st.info(note)
-    html_block(score_html(view, cards) + parts_html(view, cards))
+    top_html, body_html = report_html(r, view, cards, set_aside)
+    html_block(top_html)
     if after_score:                                 # the Admin page's "Second opinion" cards (never on the user page)
         after_score()
     slot = st.empty()                               # the download button: filled last, after the PDF is made
     slot.caption(REPORT_TEXT["pdf_preparing"])
     if previous is not None:
         show_compare(previous, view)
-    html_block(issues_html(view, cards) + skills_html(view) + improve_html(cards))
+    html_block(body_html)
     if set_aside:                                   # the team: stop an issue from counting, and see the score change
         set_aside_controls(r, trainer=trainer, training=training)
     st.write("")
@@ -2750,17 +2770,26 @@ def main(after_check=None, page_config=True, below_top=None, gate=None):
            swapped=saved.get("swap"))
 
 
+def run_check_reusing(pdf_bytes, filename, with_job, text, job_title=None):
+    """run_check for the app's pages: the saved result when this very file was already checked with the same job and
+    the same rules (lab_reuse.py), else a real check. The tests call run_check directly, so they always score."""
+    return lab_reuse.run(
+        run_check, pdf_bytes, filename, with_job, text, job_title=job_title, version=SCORE_VERSION,
+        ai_review=AI_REVIEW and bool(os.environ.get("OPENROUTER_API_KEY")),
+        code_stamp=tuple(os.path.getmtime(m.__file__) for m in LAB_MODULES))
+
+
 def check_and_store(inputs, gate=None):
     """Check the CV (and the previous version, if given) and keep the result with the inputs that made it."""
     try:
         with (gate() if gate else contextlib.nullcontext()), \
                 st.spinner("Checking the resume (a new job description is read by AI once, then saved)..."):
-            res = run_check(inputs["pdf"], inputs["name"], inputs["with_job"], inputs["text"],
-                            job_title=inputs.get("job_title"))
+            res = run_check_reusing(inputs["pdf"], inputs["name"], inputs["with_job"], inputs["text"],
+                                    job_title=inputs.get("job_title"))
             prev = None
             if inputs.get("prev_pdf"):
-                prev = run_check(inputs["prev_pdf"], inputs["prev_name"], inputs["with_job"], inputs["text"],
-                                 job_title=inputs.get("job_title"))
+                prev = run_check_reusing(inputs["prev_pdf"], inputs["prev_name"], inputs["with_job"], inputs["text"],
+                                         job_title=inputs.get("job_title"))
             st.session_state["result"] = {"res": res, "with_job": inputs["with_job"], "prev": prev,
                                           "swap": inputs.get("swap"), "inputs": inputs}
     except CheckError as e:
