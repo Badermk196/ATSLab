@@ -403,3 +403,13 @@ def headline(answers):
     if n == len(judged) and len(judged) >= 2:
         return "Both checkers agree with the Lab" if len(judged) == 2 else f"All {len(judged)} checkers agree with the Lab"
     return f"{n} of {len(judged)} checker{'s' if len(judged) != 1 else ''} agree with the Lab"
+
+
+def visible_order():
+    """The cards to draw: ATS Checker 3 only when its engine is installed on this server.
+    When it is installed, it appears again on its own (no setting to change)."""
+    try:
+        installed = bool(E.available()[0])
+    except Exception:
+        installed = False
+    return tuple(c for c in ORDER if c != "engine" or installed)

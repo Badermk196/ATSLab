@@ -147,6 +147,7 @@ class Store:
                                                       # the local file; both are used the same way (see lab_db.py)
         self._last_clean = None
         self._lock = threading.Lock()
+        self._local = threading.local()          # one Postgres connection per thread (see db())
         con = self.db()
         try:
             with con:
@@ -159,10 +160,24 @@ class Store:
             con.close()
 
     def db(self):
-        return lab_db.connect(self.path)
+        """A connection to the database.
+
+        Postgres (Neon) is reused per thread: opening a connection costs a network round trip and one page
+        asks for the database dozens of times. The local SQLite file stays per call (it is local and cheap).
+        A connection that was closed or dropped is replaced on the next call."""
+        if not self.postgres:
+            return lab_db.connect(self.path)
+        con = getattr(self._local, "con", None)
+        if con is None or getattr(con, "closed", False):
+            con = lab_db.connect(self.path)
+            con.isolation_level = None           # autocommit: every statement is saved as it runs
+            self._local.con = con
+        return con
 
     def _run(self, sql, args=()):
         con = self.db()
+        if self.postgres:                        # autocommit: nothing to save, the connection stays open
+            return con.execute(sql, args)
         try:
             with con:
                 return con.execute(sql, args)
@@ -171,6 +186,8 @@ class Store:
 
     def _all(self, sql, args=()):
         con = self.db()
+        if self.postgres:
+            return [dict(r) for r in con.execute(sql, args).fetchall()]
         try:
             return [dict(r) for r in con.execute(sql, args).fetchall()]
         finally:
@@ -192,7 +209,8 @@ class Store:
                 con.execute("COMMIT")
                 return out
             finally:
-                con.close()
+                if not self.postgres:            # a reused connection stays open for the next call
+                    con.close()
 
     # --- the free check limit (User page) --------------------------------------------------------------------------
     def reserve_check(self, keys, limit, at=None):

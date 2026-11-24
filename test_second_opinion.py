@@ -20,6 +20,7 @@ import unittest
 os.environ["ATSLAB_AI_REVIEW"] = "0"      # no AI review (and no cost) in these tests
 
 from streamlit.testing.v1 import AppTest
+from unittest import mock
 
 import admin_page as A
 import cv_score as C
@@ -200,6 +201,17 @@ class TestTheSettings(unittest.TestCase):
 
 
 class TestTheCards(unittest.TestCase):
+    def test_ats_checker_3_is_hidden_when_the_engine_is_not_installed(self):
+        """The card is not drawn at all when the open-source engine is missing on the server."""
+        with mock.patch.object(SO.E, "available", return_value=(False, "not_installed")):
+            self.assertNotIn("engine", SO.visible_order())
+            self.assertIn("matcher", SO.visible_order())
+
+    def test_ats_checker_3_comes_back_when_the_engine_is_installed(self):
+        """Nothing to switch on: installing the engine makes the card appear by itself."""
+        with mock.patch.object(SO.E, "available", return_value=(True, "")):
+            self.assertIn("engine", SO.visible_order())
+
     def test_the_section_starts_empty_with_a_button_for_each_checker(self):
         at = AppTest.from_function(second_page, default_timeout=300).run()
         self.assertFalse(at.exception, at.exception)

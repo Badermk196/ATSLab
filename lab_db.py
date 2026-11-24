@@ -256,3 +256,11 @@ class PgConnection:
             self._con.close()
         except Exception:
             pass
+
+    @property
+    def closed(self):
+        """True once the connection is closed (or broken), so a cached connection can be replaced."""
+        try:
+            return bool(self._con.closed)
+        except Exception:
+            return True

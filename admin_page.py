@@ -655,15 +655,16 @@ def second_opinion(saved):
     """The whole section: its title, the three cards, the benchmark and the note that it never changes
     the Lab score."""
     job_text = (saved.get("inputs") or {}).get("text") or ""
-    answers = {c: st.session_state.get(second_key(saved, c)) for c in SO.ORDER}
+    order = SO.visible_order()          # ATS Checker 3 is hidden until its engine is installed
+    answers = {c: st.session_state.get(second_key(saved, c)) for c in order}
     head = SO.headline(answers)
     st.markdown(
         f'<div class="so-head"><div><span class="so-title"><span class="so-num">2</span>'
         f'{UI.esc(SECOND_TEXT["title"])}</span><span class="so-sub">{UI.esc(SECOND_TEXT["sub"])}</span></div>'
         + (f'<div class="so-head-right{" grey" if not head.startswith("Both") else ""}">{UI.esc(head)}</div>'
            if head else "") + "</div>", unsafe_allow_html=True)
-    cols = st.columns(len(SO.ORDER), gap="medium")
-    for col, checker in zip(cols, SO.ORDER):
+    cols = st.columns(len(order), gap="medium")
+    for col, checker in zip(cols, order):
         with col:
             second_card(saved, checker, job_text)
     benchmark(saved, answers)
@@ -676,7 +677,7 @@ def benchmark(saved, answers):
     res = saved.get("res") or {}
     rows = [(SECOND_TEXT["bench_lab"], round(res.get("score") or 0), SO.label_for(res.get("score")),
              SECOND_TEXT["bench_lab_note"])]
-    for checker in SO.ORDER:
+    for checker in SO.visible_order():
         answer = answers.get(checker) or {}
         if answer.get("state") != SO.DONE or answer.get("score") is None:
             continue
