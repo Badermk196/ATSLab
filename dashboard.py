@@ -1350,7 +1350,7 @@ REPORT_SCREEN_CSS = """
 .stApp .rp .muted, .stApp .rp .tag, .stApp .rp .rm dt, .stApp .rp .sub, .stApp .rp .cap, .stApp .rp .scale,
 .stApp .rp .also, .stApp .rp .it .m, .stApp .rp .barlbl, .stApp .rp .lead, .stApp .rp .plain,
 .stApp .rp .row.small, .stApp .rp .cmp .file, .stApp .rp table.pt th, .stApp .rp .fx .x span,
-.stApp .rp .pill .sz {color: var(--a-muted, #64748b);}
+.stApp .rp .pill .sz, .stApp .rp .ring .of {color: var(--a-muted, #64748b);}
 .stApp .rp .bar {background: var(--a-line-2, #eef2f7);}
 .stApp .rp .sep, .stApp .rp .ib, .stApp .rp .ci .ib, .stApp .rp table.pt td, .stApp .rp table.pt th,
 .stApp .rp .code.aft {border-color: var(--a-line, #e2e8f0);}
@@ -1619,7 +1619,7 @@ def gauge(score, size, caption="", label=""):
             f'stroke-linecap="round" stroke-dasharray="{filled:.1f} {circ:.1f}" '
             f'transform="rotate(-90 {size/2} {size/2})"/>'
             f'<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="{size * 0.28:.0f}" '
-            f'font-weight="800" fill="#0f172a">{fmt_score(score)}</text></svg>'
+            f'font-weight="800" fill="var(--a-gauge-text, #0f172a)">{fmt_score(score)}</text></svg>'
             + (f'<div class="lbl" style="color:{col}">{html.escape(label)}</div>' if label else "")
             + (f'<div class="cap">{html.escape(caption)}</div>' if caption else "") + "</div>")
 
