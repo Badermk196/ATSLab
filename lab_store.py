@@ -721,8 +721,24 @@ BUG_COLUMNS = ("created_at", "who", "kind", "description", "check_id", "cv", "ta
                "ai_model", "ai_explanation", "ai_fix", "ai_error", "state", "state_when", "state_who", "note")
 
 
+# A report saved before the ring-number fixes has the score number either in a class the report also uses for its small
+# numbered badges (".rp .num": drawn tiny) or with no class and a fixed dark colour. Old saved reports are corrected
+# when they are loaded: the number gets the "gauge-num" class (big, bold, white on dark / dark on light).
+OLD_GAUGE = re.compile(r'(<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="\d+")'
+                       r'(?: class="(?:num|gauge-num)")? font-weight="800" fill="[^"]*">')
+
+
+def fix_old_gauge(text):
+    if not isinstance(text, str):
+        return text
+    return OLD_GAUGE.sub(r'\1 class="gauge-num" font-weight="800" fill="var(--a-gauge-text, #0f172a)">', text)
+
+
 def decode(row):
     row = dict(row)
+    for k in ("report_body", "report_doc", "comparison_doc"):
+        if k in row:
+            row[k] = fix_old_gauge(row[k])
     for k, empty in (("parts", {}), ("issues", []), ("review_reasons", []), ("review_facts", {})):
         if k in row:
             try:

@@ -61,6 +61,19 @@ class TestRingNumber(unittest.TestCase):
         for choice in ("light", "dark", None):
             self.assertIn("font-weight: 800 !important", UI.ring_css(choice))
 
+    def test_an_old_saved_report_gets_the_big_number_when_it_is_opened(self):
+        """Reports saved before the fix carry class="num" (tiny: the report's 28px badge) or no class at all."""
+        import dashboard as D
+        fresh = D.gauge(46, 205)
+        variants = (fresh.replace('class="gauge-num" ', 'class="num" '),
+                    fresh.replace('class="gauge-num" ', "").replace("var(--a-gauge-text, #0f172a)", "#0f172a"), fresh)
+        for old_html in variants:
+            row = H.decode({"report_body": old_html, "report_doc": "<html>" + old_html + "</html>",
+                            "comparison_doc": None, "parts": ""})
+            self.assertEqual(row["report_body"], fresh)
+            self.assertIn(fresh, row["report_doc"])
+            self.assertIsNone(row["comparison_doc"])
+
     def test_with_no_choice_the_browsers_dark_mode_gives_white(self):
         css = UI.ring_css(None)
         self.assertIn("prefers-color-scheme: dark", css)
