@@ -120,7 +120,8 @@ def theme_css():
     Empty when nothing is certain, so PALETTE's own rule stays in charge."""
     kind = theme_kind()
     if kind == "dark":
-        return "\n:root {" + DARK_VARS + "}"
+        return ("\n:root {" + DARK_VARS + "}"
+                "\n.atsl-gauge text.num, .a-ring .n {fill: #ffffff; color: #ffffff;}")
     if kind == "light" and saved_base() == "light":
         return "\n:root {" + LIGHT_VARS + "}"
     return ""
@@ -306,6 +307,14 @@ header[data-testid="stHeader"] {background: transparent; pointer-events: none;}
 .a-ring .n {font-weight: 800; color: var(--a-gauge-text); letter-spacing: -1px;}
 .a-ring .l {font-size: .72rem; font-weight: 600; margin-top: 2px;}
 .a-ring .o {color: var(--a-muted); font-size: .78rem; margin-top: 3px;}
+
+/* The score number inside the ring (and the big gauge): a LITERAL colour, never a palette variable, so it stays
+   readable even when the page is dark and the palette did not switch. White on a dark page, dark on a light one. */
+.atsl-gauge text.num, .a-ring .n {fill: #111827; color: #111827;}
+.atsl-gauge text.num, .a-ring .n {fill: light-dark(#111827, #ffffff); color: light-dark(#111827, #ffffff);}
+@media (prefers-color-scheme: dark) {
+  .atsl-gauge text.num, .a-ring .n {fill: #ffffff; color: #ffffff;}
+}
 
 /* empty states */
 .a-empty {text-align: center; padding: 48px 20px;}
