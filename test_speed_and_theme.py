@@ -49,7 +49,17 @@ class TestRingNumber(unittest.TestCase):
         for css in (dark, light):                           # a literal colour: never a theme variable
             self.assertNotIn("var(", css)
             self.assertIn(".a-ring .n", css)
-            self.assertIn(".atsl-gauge text.num", css)
+            self.assertIn(".atsl-gauge text.gauge-num", css)
+
+    def test_the_gauge_number_never_uses_the_badge_class(self):
+        """The report's ".rp .num" is a 28px badge: a gauge number with class "num" shrank to 13px."""
+        import dashboard as D
+        svg = D.gauge(84, 170)
+        self.assertIn('class="gauge-num"', svg)
+        self.assertNotIn('class="num"', svg)
+        self.assertIn('font-size="48"', svg)                          # 28% of the ring: about 48px at 170px
+        for choice in ("light", "dark", None):
+            self.assertIn("font-weight: 800 !important", UI.ring_css(choice))
 
     def test_with_no_choice_the_browsers_dark_mode_gives_white(self):
         css = UI.ring_css(None)

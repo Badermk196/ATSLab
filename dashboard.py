@@ -1620,7 +1620,7 @@ def gauge(score, size, caption="", label=""):
             f'stroke-linecap="round" stroke-dasharray="{filled:.1f} {circ:.1f}" '
             f'transform="rotate(-90 {size/2} {size/2})"/>'
             f'<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="{size * 0.28:.0f}" '
-            f'class="num" font-weight="800" fill="var(--a-gauge-text, #0f172a)">{fmt_score(score)}</text></svg>'
+            f'class="gauge-num" font-weight="800" fill="var(--a-gauge-text, #0f172a)">{fmt_score(score)}</text></svg>'
             + (f'<div class="lbl" style="color:{col}">{html.escape(label)}</div>' if label else "")
             + (f'<div class="cap">{html.escape(caption)}</div>' if caption else "") + "</div>")
 

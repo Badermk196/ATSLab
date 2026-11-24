@@ -69,7 +69,7 @@ def score_card_html(r, cards):
         else USER_TEXT["reach_none"]
     job = (f'<div class="job">{USER_TEXT["checked_job"].format(target=UI.esc(r["target"]))}</div>'
            if r["mode"] == "job" else "")
-    return (f'<div class="u-score"><div class="left">{UI.ring(r["score"], r["label"], 150, 13, USER_TEXT["out_of"], 46)}'
+    return (f'<div class="u-score"><div class="left">{UI.ring(r["score"], r["label"], 150, 13, USER_TEXT["out_of"], 48)}'
             f'<div style="min-width:0"><span class="a-tag a-{tone}">{UI.esc(r["label"])}</span>'
             f'<div class="head">{UI.esc(USER_TEXT["headline"].get(r["label"], ""))}</div>'
             f'<div class="sub">{reach}</div>{job}</div></div>{parts_html(r)}</div>')

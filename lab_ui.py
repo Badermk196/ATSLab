@@ -127,7 +127,7 @@ def theme_css(choice=None):
     kind = theme_kind()
     if kind == "dark":
         return ("\n:root {" + DARK_VARS + "}"
-                "\n.atsl-gauge text.num, .a-ring .n {fill: #ffffff; color: #ffffff;}")
+                "\n.atsl-gauge text.gauge-num, .a-ring .n {fill: #ffffff; color: #ffffff;}")
     if kind == "light" and saved_base() == "light":
         return "\n:root {" + LIGHT_VARS + "}"
     return ""
@@ -333,10 +333,10 @@ header[data-testid="stHeader"] {background: transparent; pointer-events: none;}
 
 /* The score number inside the ring (and the big gauge): a LITERAL colour, never a palette variable, so it stays
    readable even when the page is dark and the palette did not switch. White on a dark page, dark on a light one. */
-.atsl-gauge text.num, .a-ring .n {fill: #111827; color: #111827;}
-.atsl-gauge text.num, .a-ring .n {fill: light-dark(#111827, #ffffff); color: light-dark(#111827, #ffffff);}
+.atsl-gauge text.gauge-num, .a-ring .n {fill: #111827; color: #111827;}
+.atsl-gauge text.gauge-num, .a-ring .n {fill: light-dark(#111827, #ffffff); color: light-dark(#111827, #ffffff);}
 @media (prefers-color-scheme: dark) {
-  .atsl-gauge text.num, .a-ring .n {fill: #ffffff; color: #ffffff;}
+  .atsl-gauge text.gauge-num, .a-ring .n {fill: #ffffff; color: #ffffff;}
 }
 
 /* empty states */
@@ -662,7 +662,10 @@ section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [da
 
 
 RING_DARK_TEXT, RING_LIGHT_TEXT = "#FFFFFF", "#111827"
-RING_SELECTOR = ".stApp .atsl-gauge text.num, .stApp .a-ring .n"
+RING_SELECTOR = ".stApp .atsl-gauge text.gauge-num, .stApp .a-ring .n"
+# The number keeps its own size (the gauge: 28% of the ring, about 48px at 170px; the ring: set inline) and is bold.
+# (The class is "gauge-num", not "num": the report's ".rp .num" is a small 28px badge and shrank the number to 13px.)
+RING_SIZE_RULE = ".stApp .atsl-gauge text.gauge-num, .stApp .a-ring .n {font-weight: 800 !important;}"
 
 
 def ring_css(choice=None):
@@ -672,11 +675,12 @@ def ring_css(choice=None):
     (the same one the palette follows)."""
     def rule(color):
         return f"{RING_SELECTOR} {{fill: {color} !important; color: {color} !important;}}"
+    size = RING_SIZE_RULE
     if choice == "dark":
-        return rule(RING_DARK_TEXT)
+        return rule(RING_DARK_TEXT) + size
     if choice == "light":
-        return rule(RING_LIGHT_TEXT)
-    return (rule(RING_LIGHT_TEXT) + "@media (prefers-color-scheme: dark) {" + rule(RING_DARK_TEXT) + "}")
+        return rule(RING_LIGHT_TEXT) + size
+    return (size + rule(RING_LIGHT_TEXT) + "@media (prefers-color-scheme: dark) {" + rule(RING_DARK_TEXT) + "}")
 
 
 def css(*parts, extra="", choice=None):

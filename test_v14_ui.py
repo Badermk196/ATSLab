@@ -486,8 +486,8 @@ class TestStyleAndTexts(unittest.TestCase):
         self.assertEqual(UI.initials(""), "?")
         self.assertIn(">92</div>", UI.ring(92, "Excellent"))
         # the number inside the ring is a literal colour: white on a dark page, dark on a light one
-        self.assertIn(".atsl-gauge text.num, .a-ring .n {fill: #ffffff; color: #ffffff;}", UI.BASE)
-        self.assertIn(".atsl-gauge text.num, .a-ring .n {fill: #111827; color: #111827;}", UI.BASE)
+        self.assertIn(".atsl-gauge text.gauge-num, .a-ring .n {fill: #ffffff; color: #ffffff;}", UI.BASE)
+        self.assertIn(".atsl-gauge text.gauge-num, .a-ring .n {fill: #111827; color: #111827;}", UI.BASE)
         self.assertIn("&lt;b&gt;", UI.tag("<b>x</b>"))                                   # always escaped
 
 
