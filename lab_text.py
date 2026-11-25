@@ -189,11 +189,12 @@ SETTINGS_TEXT = {
                       "On the user page, people enter their name and email before they see the result."),
     "second_matcher": ("Resume Matcher card",
                        "Shows the second opinion card on the Admin page. It runs only when the team presses it."),
-    "second_checker2": ("ATS Checker 2 card",
-                        "Shows the second opinion card on the Admin page. It runs only when the team presses it."),
-    "second_engine": ("ATS Checker 3 card (open-source)",
-                      "Shows the open-source ats-engine card on the Admin page. It runs only when the team "
-                      "presses it, on this server, and never changes the ATS Lab score."),
+    "second_checker2": ("ATS Checker 2 card (hidden for now)",
+                        "The Lab's own general score. Off by default: VeriWorkly replaced it on the Admin page. "
+                        "It runs only when the team presses it."),
+    "second_engine": ("VeriWorkly card (open-source)",
+                      "Shows the open-source VeriWorkly ats-engine card on the Admin page. It runs only when the "
+                      "team presses it, on this server, and never changes the ATS Lab score."),
     "second_lever": ("LeverParser card (open-source)",
                      "Shows the open-source LeverParser card on the Admin page. It reads the resume text on "
                      "this server and never changes the ATS Lab score."),
@@ -223,6 +224,15 @@ SECOND_TEXT = {
     "unavailable": "Not installed on this server",
     "unavailable_hint": "{name} needs Node.js and the open-source ats-engine package. The ATS Lab works "
                         "normally without it. See DEPLOY.md to switch it on.",
+    # VeriWorkly sets itself up on a server with no Node: Node 24 from pip, the engine from npm once (lab_node.py)
+    "veri_setting_up": "Setting up...",
+    "veri_installing": "Setting up VeriWorkly on this server (a one-time install, about a minute). Press Check again "
+                       "in a moment. The ATS Lab works normally meanwhile.",
+    "veri_failed": "VeriWorkly could not be set up on this server ({why}{detail}). The ATS Lab works normally "
+                   "without it.",
+    "veri_why": {"node_missing": "no Node.js", "node_too_old": "Node.js is too old", "npm_missing": "no npm",
+                 "npm_install_failed": "the npm install failed", "npm_install_timeout": "the npm install took too long",
+                 "not_installed": "the engine is not installed"},
     "unavailable_hint_lever": "{name} is not installed on this server. The ATS Lab works normally without "
                               "it. To switch it on, run: pip install leverparser",
     "no_text": "No text to read",
@@ -237,7 +247,7 @@ SECOND_TEXT = {
     "read_role": "Read: the skills a {role} role is expected to have (no job description was given).",
     "read_skills": "Read: the resume's own skills list (no job description and no role were given).",
     "read_checks": "Read: this resume itself - {passed} of {total} checks passed.",
-    "read_engine": "Read: the resume text with the open-source ats-engine ({version}).",
+    "read_engine": "Read: the resume text with VeriWorkly's open-source ats-engine ({version}).",
     "read_lever": "Read: the resume text with LeverParser ({version}).",
     "lever_note": "A parse score says what this parser could read, not how good the resume is.",
     "lever_jobs": "Jobs: {list}",
@@ -248,6 +258,7 @@ SECOND_TEXT = {
     "lever_unclear": "Not found in the resume text: {list}",
     "lever_tag": {"read": "read", "missed": "missed", "unclear": "not in the text"},
     "engine_job_match": "Job match {n}/100",
+    "engine_readiness": "Readiness score {n}/100",
     "engine_checks": "{failed} of {total} checks failed",
     "engine_missing": "Missing keywords: {list}",
     "weakest": "Weakest: {list}",

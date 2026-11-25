@@ -32,12 +32,12 @@ CHECKERS = {
                 "unit": "Keyword match"},
     "checker2": {"name": "ATS Checker 2", "sub": "General score", "compares": "score",
                  "unit": "General score"},
-    "engine": {"name": "ATS Checker 3", "sub": "Open-source checker", "compares": "score",
-               "unit": "Readiness score"},
+    "engine": {"name": "VeriWorkly", "sub": "Open-source ATS checker", "compares": "score",
+               "unit": "Readiness score"},   # with a job description: its Job match, against the Lab's Job match
     "lever": {"name": "LeverParser", "sub": "Open-source parser", "compares": "none",
               "unit": "Parse score"},
 }
-ORDER = ("matcher", "checker2", "engine", "lever")
+ORDER = ("matcher", "engine", "checker2", "lever")
 
 # --- states the card can be in ----------------------------------------------------------------------
 EMPTY = "empty"                 # nothing checked yet: the card shows its button
@@ -92,18 +92,24 @@ def difference(score, reference):
     return {"word": word, "diff": round(diff, 1), "agree": False, "text": f"{word} · {pts} {side}"}
 
 
-def reference_of(res, checker):
+def compares_of(checker, answer=None):
+    """What this checker's number is compared with: "job_match", "score" or "none". An answer can say it itself
+    (VeriWorkly with a job description gives its Job match, so it is compared with the Lab's Job match)."""
+    return (answer or {}).get("compares") or CHECKERS[checker]["compares"]
+
+
+def reference_of(res, checker, answer=None):
     """The Lab number this checker is compared with, from the result."""
-    key = CHECKERS[checker]["compares"]
+    key = compares_of(checker, answer)
     if key == "job_match":
         return round((res.get("parts") or {}).get("job_match") or 0)
     return round(res.get("score") or 0)
 
 
-def reference_text(res, checker):
+def reference_text(res, checker, answer=None):
     """The comparison as shown on the card: 'vs Lab Job match 82' / 'vs Lab score 84'."""
-    ref = reference_of(res, checker)
-    return (f"vs Lab Job match {ref}" if CHECKERS[checker]["compares"] == "job_match"
+    ref = reference_of(res, checker, answer)
+    return (f"vs Lab Job match {ref}" if compares_of(checker, answer) == "job_match"
             else f"vs Lab score {ref}")
 
 
@@ -116,7 +122,7 @@ def finish(checker, res, answer):
         # a general check has no Lab Job match to compare with, and a parse score is not an ATS score:
         # neither is put beside the Lab's number.
         return dict(answer, reference=None, difference="", word="", agree=None)
-    ref = reference_of(res, checker)
+    ref = reference_of(res, checker, answer)
     d = difference(answer.get("score"), ref)
     return dict(answer, reference=ref, difference=d["text"], word=d["word"], agree=d["agree"])
 
@@ -382,6 +388,15 @@ def run(checker, res, job_text="", settings=None):
         except (Exception, SystemExit) as e:    # a checker never breaks the Lab
             return {"state": FAILED, "why": type(e).__name__}
         out["source"] = "engine"
+        if out.get("state") == DONE and (job_text or "").strip() and out.get("job_match") is not None:
+            # a job description was given: the number to compare is VeriWorkly's Job match, against the Lab's Job
+            # match. Its readiness score stays on the card as a note.
+            out["readiness"] = out.get("score")
+            out["score"] = out["job_match"]
+            out["label"] = label_for(out["score"])
+            out["compares"] = "job_match"
+        else:                                   # no job description: its readiness score against the Lab's score
+            out["compares"] = "score"
         return out
     if checker == "lever":
         try:
@@ -405,12 +420,8 @@ def headline(answers):
     return f"{n} of {len(judged)} checker{'s' if len(judged) != 1 else ''} agree with the Lab"
 
 
-def visible_order(lever_on=False):
-    """The cards to draw. ATS Checker 3 only when its engine is installed on this server (it appears again on its
-    own when it is). LeverParser only when its setting is switched on (Settings > Second opinion; off for now).
-    The code of both stays: nothing is removed, only not drawn."""
-    try:
-        installed = bool(E.available()[0])
-    except Exception:
-        installed = False
-    return tuple(c for c in ORDER if (c != "engine" or installed) and (c != "lever" or lever_on))
+def visible_order(lever_on=False, checker2_on=False):
+    """The cards to draw: Resume Matcher and VeriWorkly. VeriWorkly is always drawn: when it cannot run here the card
+    says why (setting up, Node missing ...), so a problem is seen, not hidden. ATS Checker 2 and LeverParser only when
+    their settings are switched on (Settings > Second opinion; both off for now). Their code stays."""
+    return tuple(c for c in ORDER if (c != "lever" or lever_on) and (c != "checker2" or checker2_on))

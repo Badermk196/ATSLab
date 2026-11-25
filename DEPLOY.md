@@ -249,6 +249,15 @@ npm install @veriworkly/ats-engine
 In the Docker image the engine is installed during the build (`npm install -g @veriworkly/ats-engine`), and
 Node 22 is copied into the image from the official `node:22-slim` image. Nothing else changes.
 
+**Streamlit Community Cloud (no Node.js there).** The card is now called **VeriWorkly** and it sets itself up:
+`requirements.txt` installs Node 24 from pip (`nodejs-wheel-binaries`, it carries `node` and `npm`), and on the first
+visit the app runs `npm install` once, in the background, in `vendor/ats-engine` (`package.json` and
+`package-lock.json` are in the repo; about 18 MB, about a minute). While it runs the card says "Setting up...";
+if it fails the card says why (no Node, the npm install failed ...) and the ATS Lab works normally. The engine's
+own PDF and DOCX readers (pdf-parse, pdfjs-dist, mammoth) are not installed: the Lab hands it the text it already
+read from the PDF. Switch the card off or on in **Settings**. "ATS Checker 2" was replaced by this card (its code and
+its setting stay, off by default).
+
 If the engine is not installed, the third card says "Not installed on this server" and everything else works
 normally. To use a different copy, set the environment variable `ATSLAB_ATS_ENGINE` to the full path of the
 command.

@@ -25,6 +25,7 @@ import streamlit as st
 
 import dashboard as D
 import lab_bugs as BG
+import lab_node as LN
 import lab_pages as P
 import lab_second as SO
 import lab_settings as S
@@ -460,11 +461,18 @@ LEVER_TONE = {"read": "a-ok", "missed": "a-warn", "unclear": "a-info"}
 LEVER_MARK = {"read": "\u2713", "missed": "\u2717", "unclear": "~"}
 
 
-def unavailable_hint(checker, name):
-    """The "not installed on this server" note. LeverParser needs a pip package and the open-source checker
-    needs Node.js, so the two do not share one sentence."""
-    text = (SECOND_TEXT["unavailable_hint_lever"] if checker == "lever" else SECOND_TEXT["unavailable_hint"])
-    return text.format(name=name)
+def unavailable_hint(checker, name, why=""):
+    """The "not installed on this server" note. LeverParser needs a pip package; VeriWorkly sets itself up
+    (Node 24 from pip, the engine from npm, once) and says what happened when it could not."""
+    if checker == "lever":
+        return SECOND_TEXT["unavailable_hint_lever"].format(name=name)
+    if checker == "engine":
+        if why == "installing":
+            return SECOND_TEXT["veri_installing"]
+        detail = LN.status().get("detail") or ""
+        return SECOND_TEXT["veri_failed"].format(
+            why=SECOND_TEXT["veri_why"].get(why, why or "unknown"), detail=(": " + detail) if detail else "")
+    return SECOND_TEXT["unavailable_hint"].format(name=name)
 
 
 def second_on(checker):
@@ -541,12 +549,13 @@ def second_card(saved, checker, job_text):
         state = answer.get("state")
         if state in (SO.CHECKING, SO.NEEDS_JOB, SO.FAILED, SO.UNAVAILABLE):
             no_text = answer.get("why") == "no_text"
-            st.markdown(f'<div class="so-state">{UI.esc(SECOND_TEXT[state])}</div>'
+            setting_up = checker == "engine" and answer.get("why") == "installing"
+            st.markdown(f'<div class="so-state">{UI.esc(SECOND_TEXT["veri_setting_up"] if setting_up else SECOND_TEXT[state])}</div>'
                         + (f'<div class="so-note">{UI.esc(SECOND_TEXT["no_text_hint"].format(name=name))}</div>'
                            if no_text else
                            f'<div class="so-note">{UI.esc(SECOND_TEXT["needs_job_hint"].format(name=name))}</div>'
                            if state == SO.NEEDS_JOB else
-                           f'<div class="so-note">{UI.esc(unavailable_hint(checker, name))}</div>'
+                           f'<div class="so-note">{UI.esc(unavailable_hint(checker, name, answer.get("why") or ""))}</div>'
                            if state == SO.UNAVAILABLE else
                            f'<div class="so-note">{UI.esc(SECOND_TEXT["failed_hint"])}</div>'
                            if state == SO.FAILED else ""), unsafe_allow_html=True)
@@ -556,12 +565,13 @@ def second_card(saved, checker, job_text):
                 st.rerun()
             return
         general = answer.get("source") in ("role", "skills")   # a general check: no Job match to compare with
-        if info["compares"] == "none":            # a parse score is not an ATS score: nothing to compare with
+        compares = SO.compares_of(checker, answer)    # VeriWorkly with a job: its Job match vs the Lab's Job match
+        if compares == "none":                    # a parse score is not an ATS score: nothing to compare with
             ref = SECOND_TEXT["no_score_reference"]
-        elif general and info["compares"] == "job_match":
+        elif general and compares == "job_match":
             ref = SECOND_TEXT["no_reference"]
         else:
-            ref = SECOND_TEXT["vs_job" if info["compares"] == "job_match" else "vs_score"].format(
+            ref = SECOND_TEXT["vs_job" if compares == "job_match" else "vs_score"].format(
                 n=answer.get("reference"))
         tag = (f'<span class="a-tag {SECOND_TONE.get(answer.get("word"), "a-grey")}">'
                f'{UI.esc(answer.get("difference") or "")}</span>') if answer.get("word") else ""
@@ -577,7 +587,9 @@ def second_card(saved, checker, job_text):
             failed = len(answer.get("checks") or [])
             total = answer.get("n_total") or 0
             extra = []
-            if job_match is not None:
+            if answer.get("readiness") is not None:         # the big number is its Job match: say its readiness too
+                extra.append(SECOND_TEXT["engine_readiness"].format(n=answer["readiness"]))
+            elif job_match is not None:
                 extra.append(SECOND_TEXT["engine_job_match"].format(n=job_match))
             if total:
                 extra.append(SECOND_TEXT["engine_checks"].format(failed=failed, total=total))
@@ -654,7 +666,7 @@ def second_opinion(saved):
     """The whole section: its title, the three cards, the benchmark and the note that it never changes
     the Lab score."""
     job_text = (saved.get("inputs") or {}).get("text") or ""
-    order = SO.visible_order(second_on("lever"))   # ATS Checker 3: only when installed; LeverParser: only when on
+    order = SO.visible_order(second_on("lever"), second_on("checker2"))   # VeriWorkly + Resume Matcher; the rest if on
     answers = {c: st.session_state.get(second_key(saved, c)) for c in order}
     head = SO.headline(answers)
     st.markdown(
@@ -676,7 +688,7 @@ def benchmark(saved, answers):
     res = saved.get("res") or {}
     rows = [(SECOND_TEXT["bench_lab"], round(res.get("score") or 0), SO.label_for(res.get("score")),
              SECOND_TEXT["bench_lab_note"])]
-    for checker in SO.visible_order(second_on("lever")):
+    for checker in SO.visible_order(second_on("lever"), second_on("checker2")):
         answer = answers.get(checker) or {}
         if answer.get("state") != SO.DONE or answer.get("score") is None:
             continue

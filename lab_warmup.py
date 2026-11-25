@@ -26,6 +26,11 @@ def start():
         if _STATE["started"]:
             return False
         _STATE["started"] = True
+    try:
+        import lab_node
+        lab_node.ensure()                       # VeriWorkly's one-time npm install, in its own background thread
+    except Exception:
+        pass
     threading.Thread(target=_work, name="atslab-warmup", daemon=True).start()
     return True
 

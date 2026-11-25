@@ -36,8 +36,8 @@ _TYPES = {
     "site_url": (str, "https://1000jobs.club"),
     "collect_leads": (bool, False),
     "second_matcher": (bool, True),     # the Admin page's "Second opinion" cards ...
-    "second_checker2": (bool, True),    # ... run only when the team presses their button
-    "second_engine": (bool, True),      # ... the open-source checker (ats-engine), same rule
+    "second_checker2": (bool, False),   # ... ATS Checker 2: replaced by VeriWorkly on the page (off; the code stays)
+    "second_engine": (bool, True),      # ... VeriWorkly (the open-source ats-engine), same rule
     "second_lever": (bool, False),      # ... the open-source parser (LeverParser): card hidden for now; switch on in Settings
     "bug_image_days": (int, 30),        # a bug screenshot is deleted this many days after the team
                                         # sets the bug Fixed or Rejected (the text always stays)

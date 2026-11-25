@@ -1,6 +1,6 @@
 """
 Tests for Phase 1 of the speed / look round: the version line, the sun / moon button, the ring number's colour, the
-second-opinion cards (ATS Checker 3 and LeverParser hidden), and the speed helpers (kept reads, reused results, the
+second-opinion cards (LeverParser hidden), and the speed helpers (kept reads, reused results, the
 warm-up, the timing). No scoring is touched here. No AI call, no download: the tests never load the AI model.
 
   py -3.12 -m unittest test_speed_and_theme -v
@@ -151,10 +151,6 @@ class TestSecondOpinionCards(unittest.TestCase):
             self.assertNotIn("lever", SO.visible_order())
             self.assertIn("lever", SO.visible_order(lever_on=True))
             self.assertIn("lever", SO.ORDER)                 # nothing was removed
-
-    def test_ats_checker_3_needs_its_engine(self):
-        with mock.patch.object(SO.E, "available", return_value=(False, "not_installed")):
-            self.assertNotIn("engine", SO.visible_order(lever_on=True))
 
     def test_the_check_again_button_never_wraps(self):
         css = UI.BASE + UI.ADMIN

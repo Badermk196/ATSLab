@@ -189,7 +189,8 @@ class TestTheSettings(unittest.TestCase):
         for key in ("second_matcher", "second_checker2", "second_engine", "second_lever"):
             self.assertIn(key, S.SETTINGS)
             self.assertIn(key, T.SETTINGS_TEXT)
-            self.assertEqual(S.SETTINGS[key][1], key != "second_lever")    # LeverParser's card is off for now
+            # ATS Checker 2 (replaced by VeriWorkly) and LeverParser are off for now; the code stays
+            self.assertEqual(S.SETTINGS[key][1], key not in ("second_lever", "second_checker2"))
             self.assertFalse(S.get(key, {key: False}), "a saved off switch wins")
 
     def test_the_settings_view_shows_all_four_switches(self):
@@ -201,16 +202,13 @@ class TestTheSettings(unittest.TestCase):
 
 
 class TestTheCards(unittest.TestCase):
-    def test_ats_checker_3_is_hidden_when_the_engine_is_not_installed(self):
-        """The card is not drawn at all when the open-source engine is missing on the server."""
-        with mock.patch.object(SO.E, "available", return_value=(False, "not_installed")):
-            self.assertNotIn("engine", SO.visible_order())
-            self.assertIn("matcher", SO.visible_order())
-
-    def test_ats_checker_3_comes_back_when_the_engine_is_installed(self):
-        """Nothing to switch on: installing the engine makes the card appear by itself."""
-        with mock.patch.object(SO.E, "available", return_value=(True, "")):
-            self.assertIn("engine", SO.visible_order())
+    def test_veriworkly_is_always_drawn_and_ats_checker_2_is_hidden_by_default(self):
+        """VeriWorkly replaced ATS Checker 2. It is drawn even when it cannot run here (its card says why)."""
+        for installed in (False, True):
+            with mock.patch.object(SO.E, "available", return_value=(installed, "")):
+                self.assertEqual(SO.visible_order(), ("matcher", "engine"))
+        self.assertEqual(SO.visible_order(checker2_on=True), ("matcher", "engine", "checker2"))
+        self.assertEqual(SO.CHECKERS["engine"]["name"], "VeriWorkly")
 
     def test_the_section_starts_empty_with_a_button_for_each_checker(self):
         at = AppTest.from_function(second_page, default_timeout=300).run()
@@ -223,7 +221,7 @@ class TestTheCards(unittest.TestCase):
         self.assertIn("Not checked yet", body)
         self.assertIn("Check with Resume Matcher", [b.label for b in at.button])
         self.assertIn("Check with ATS Checker 2", [b.label for b in at.button])
-        self.assertIn("Check with ATS Checker 3", [b.label for b in at.button])
+        self.assertIn("Check with VeriWorkly", [b.label for b in at.button])
         self.assertIn("Check with LeverParser", [b.label for b in at.button])
 
     def test_pressing_the_button_runs_the_checker(self):

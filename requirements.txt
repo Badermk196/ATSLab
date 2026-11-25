@@ -42,3 +42,8 @@ reportlab==5.0.1
 # It runs locally and never changes the ATS Lab score. The distribution is `leverparser`, but its import
 # name is `pyresume`: see lab_lever.py. If it is missing, its card says "not installed" and the Lab works.
 leverparser==0.1.0
+
+# Node.js 24 for the VeriWorkly card (the open-source @veriworkly/ats-engine needs Node 22.12+). Streamlit Cloud has no
+# Node, so it comes from pip: this wheel carries `node` and `npm`. The engine itself is installed from npm once, in the
+# background, on the first visit (lab_node.py; package.json + package-lock.json are in vendor/ats-engine).
+nodejs-wheel-binaries==24.19.0

@@ -50,7 +50,7 @@ class TestTheRegistration(unittest.TestCase):
     def test_it_is_the_third_checker(self):
         self.assertIn("engine", SO.CHECKERS)
         # the open-source parser (LeverParser) was added after it, so the first three are checked in order
-        self.assertEqual(list(SO.ORDER)[:3], ["matcher", "checker2", "engine"])
+        self.assertEqual(list(SO.ORDER)[:3], ["matcher", "engine", "checker2"])      # VeriWorkly beside the matcher
 
     def test_it_is_compared_with_the_lab_score(self):
         self.assertEqual(SO.CHECKERS["engine"]["compares"], "score")
@@ -143,7 +143,7 @@ class TestTheBenchmark(unittest.TestCase):
         self.assertIn(T.SECOND_TEXT["bench_title"], body)
         self.assertIn(T.SECOND_TEXT["bench_lab"], body)
         self.assertIn("Resume Matcher", body)
-        self.assertIn("ATS Checker 3", body)
+        self.assertIn("VeriWorkly", body)
         self.assertNotIn("ATS Checker 2", body, "a card with no number is not in the table")
 
     def test_no_table_when_nothing_was_checked(self):

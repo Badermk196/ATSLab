@@ -38,6 +38,8 @@ import subprocess
 import sys
 import tempfile
 
+import lab_node
+
 # --- states -----------------------------------------------------------------------------------------
 DONE = "done"                   # a number to show
 FAILED = "failed"               # the command ran but could not answer
@@ -57,10 +59,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 #   npm install --prefix vendor/ats-engine @veriworkly/ats-engine
 VENDOR = os.path.join(HERE, "vendor", "ats-engine", "node_modules", ".bin")
 
-NAME = "ATS Checker 3"
+NAME = "VeriWorkly"
 SUB = "Open-source checker"
 UNIT = "Readiness score"
-VERSION = "MIT licence - VeriWorkly ats-engine"
+VERSION = "MIT licence"
 
 
 def _split(command):
@@ -82,6 +84,9 @@ def command():
         parts = _split(configured)
         if parts and (shutil.which(parts[0]) or os.path.isfile(parts[0])):
             return parts
+    ours = lab_node.engine_command()                                   # node (the wheel's, or the PATH's) + the engine
+    if ours:                                                           # installed once in vendor/ats-engine
+        return ours
     names = (("ats-engine.cmd", "ats-engine.exe", "ats-engine") if _windows()
              else ("ats-engine",))
     for name in names:                                                  # the copy beside the app first
@@ -99,7 +104,17 @@ def command():
 
 
 def available():
-    """Whether the engine can run here. -> (bool, reason)"""
+    """Whether the engine can run here. -> (bool, reason)
+    reason: "installing" (the one-time npm install is running), "node_missing", "node_too_old", "npm_missing",
+    "npm_install_failed", "npm_install_timeout" or "not_installed"."""
+    lab_node.ensure()                                   # sets the engine up once, in the background (never in a test)
+    if lab_node.engine_command() is not None:           # node + the engine in vendor/ats-engine
+        return True, ""
+    state = lab_node.status()
+    if state["state"] == "installing":
+        return False, "installing"
+    if state["state"] == "failed":
+        return False, state["why"] or "not_installed"
     if not shutil.which("node") and not os.environ.get(ENV_COMMAND):
         return False, "node_missing"
     if command() is None:
@@ -114,8 +129,7 @@ def _run(args, cwd):
     if _windows():
         # never open a console window on the server; the engine needs no shell
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    env = dict(os.environ, NO_COLOR="1", FORCE_COLOR="0")
-    proc = subprocess.run(args, env=env, **kwargs)
+    proc = subprocess.run(args, env=lab_node.env(), **kwargs)
     return proc.stdout or "", proc.stderr or "", proc.returncode
 
 
