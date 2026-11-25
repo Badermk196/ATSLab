@@ -13,6 +13,8 @@ page reload never resets them).
 
 import copy
 import datetime as dt
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -85,10 +87,12 @@ CREATE TABLE IF NOT EXISTS login_guard (
   locked_until REAL NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS admin_sessions (
-  token TEXT PRIMARY KEY,
+  token_hash TEXT PRIMARY KEY,
   admin TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  seen_at TEXT NOT NULL
+  seen_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  pw_stamp TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS training (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,6 +164,9 @@ class Store:
         con = self.db()
         try:
             with con:
+                sessions = {r["name"] for r in con.execute("PRAGMA table_info(admin_sessions)")}
+                if sessions and "token_hash" not in sessions:
+                    con.execute("DROP TABLE admin_sessions")   # the old table kept the token itself: now only its hash
                 con.executescript(SCHEMA)
                 have = {r["name"] for r in con.execute("PRAGMA table_info(checks)")}
                 for col, kind in NEW_COLUMNS.items():          # an older database: add the new columns, keep the rows
@@ -676,35 +683,66 @@ class Store:
         return gone
 
     # --- staying signed in (a cookie that lasts, so the password is typed once) -------------------------------
-    def remember_admin(self, token, admin):
-        """Keep this browser signed in as `admin`: only a random token is stored, never a password."""
-        stamp = now().strftime(TIME_FORMAT)
-        self._run("INSERT INTO admin_sessions (token, admin, created_at, seen_at) VALUES (?, ?, ?, ?) "
-                  "ON CONFLICT(token) DO UPDATE SET admin = excluded.admin, seen_at = excluded.seen_at",
-                  (token, admin, stamp, stamp))
+    # The cookie holds a random token. The database holds only its SHA-256 hash (never the token, never a password),
+    # the admin's name, an expiry date and a "password stamp": a keyed hash of the admin's password, so a changed
+    # password ends every sign-in made with the old one.
+    @staticmethod
+    def token_hash(token):
+        return hashlib.sha256(("atslab-admin-session:" + str(token)).encode("utf-8")).hexdigest()
 
-    def admin_of_token(self, token, days=SESSION_DAYS):
-        """The admin this token belongs to, or None (an unknown token, or one that has not been used for `days`).
-        A visit keeps the token alive."""
+    @staticmethod
+    def password_stamp(token, password):
+        return hmac.new(str(token).encode("utf-8"), ("pw:" + str(password)).encode("utf-8"), hashlib.sha256).hexdigest()
+
+    def remember_admin(self, token, admin, password=None, days=SESSION_DAYS):
+        """Keep this browser signed in as `admin` for `days`: only the token's hash is stored."""
+        stamp = now().strftime(TIME_FORMAT)
+        expires = (now() + dt.timedelta(days=days)).strftime(TIME_FORMAT)
+        pw = self.password_stamp(token, password) if password is not None else ""
+        self.forget_expired_tokens()                 # old, never-used sign-ins do not pile up
+        self._run("INSERT INTO admin_sessions (token_hash, admin, created_at, seen_at, expires_at, pw_stamp) "
+                  "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(token_hash) DO UPDATE SET admin = excluded.admin, "
+                  "seen_at = excluded.seen_at, expires_at = excluded.expires_at, pw_stamp = excluded.pw_stamp",
+                  (self.token_hash(token), admin, stamp, stamp, expires, pw))
+
+    def admin_of_token(self, token, accounts=None, days=SESSION_DAYS):
+        """The admin this token belongs to, or None: an unknown token, an expired one, or (when `accounts`, the
+        {name: password} of the admin accounts, is given) one whose account is gone or whose password changed since
+        the sign in. A valid visit renews the expiry, so a used browser stays signed in."""
         if not token:
             return None
-        rows = self._all("SELECT admin, seen_at FROM admin_sessions WHERE token = ?", (token,))
+        key = self.token_hash(token)
+        rows = self._all("SELECT admin, expires_at, pw_stamp FROM admin_sessions WHERE token_hash = ?", (key,))
         if not rows:
             return None
+        row = rows[0]
         try:
-            seen = dt.datetime.strptime(rows[0]["seen_at"], TIME_FORMAT)
+            expired = dt.datetime.strptime(row["expires_at"], TIME_FORMAT) <= now()
         except (TypeError, ValueError):
-            seen = now()
-        if (now() - seen).days >= days:
+            expired = True
+        if expired:
             self.forget_token(token)
             return None
-        self._run("UPDATE admin_sessions SET seen_at = ? WHERE token = ?", (now().strftime(TIME_FORMAT), token))
-        return rows[0]["admin"]
+        if accounts is not None:
+            password = next((pw for who, pw in accounts.items() if who == row["admin"]), None)
+            if password is None or not hmac.compare_digest(row["pw_stamp"] or "", self.password_stamp(token, password)):
+                self.forget_token(token)           # the account is gone, or its password was changed
+                return None
+        self._run("UPDATE admin_sessions SET seen_at = ?, expires_at = ? WHERE token_hash = ?",
+                  (now().strftime(TIME_FORMAT), (now() + dt.timedelta(days=days)).strftime(TIME_FORMAT), key))
+        return row["admin"]
 
     def forget_token(self, token):
         """Sign one browser out (the cookie is cleared by the page as well)."""
         if token:
-            self._run("DELETE FROM admin_sessions WHERE token = ?", (token,))
+            self._run("DELETE FROM admin_sessions WHERE token_hash = ?", (self.token_hash(token),))
+
+    def forget_admin(self, admin):
+        """Sign one admin out everywhere (their password changed)."""
+        self._run("DELETE FROM admin_sessions WHERE admin = ?", (admin,))
+
+    def forget_expired_tokens(self):
+        self._run("DELETE FROM admin_sessions WHERE expires_at <= ?", (now().strftime(TIME_FORMAT),))
 
     def forget_all_tokens(self):
         """Sign every browser out (used by reset_data.py: a clean start, a fresh sign in). -> rows removed."""

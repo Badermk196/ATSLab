@@ -99,12 +99,69 @@ class TestStayingSignedIn(StoreCase):
         self.store.forget_token("c" * 32)
         self.assertIsNone(self.store.admin_of_token("c" * 32))
 
-    def test_a_token_that_is_not_used_for_a_month_ends(self):
+    def test_a_token_past_its_expiry_date_ends(self):
         self.store.remember_admin("d" * 32, "Bader")
-        old = (H.now() - __import__("datetime").timedelta(days=31)).strftime(H.TIME_FORMAT)
-        self.store._run("UPDATE admin_sessions SET seen_at = ? WHERE token = ?", (old, "d" * 32))
+        old = (H.now() - __import__("datetime").timedelta(minutes=1)).strftime(H.TIME_FORMAT)
+        self.store._run("UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?", (old, self.store.token_hash("d" * 32)))
         self.assertIsNone(self.store.admin_of_token("d" * 32))
-        self.assertEqual([], self.store._all("SELECT * FROM admin_sessions WHERE token = ?", ("d" * 32,)))
+        self.assertEqual([], self.store._all("SELECT * FROM admin_sessions"))
+
+    def test_a_sign_in_lasts_30_days_and_a_visit_renews_it(self):
+        import datetime
+        self.assertEqual(30, H.SESSION_DAYS)
+        self.store.remember_admin("1" * 32, "Bader")
+        row = self.store._all("SELECT * FROM admin_sessions")[0]
+        left = datetime.datetime.strptime(row["expires_at"], H.TIME_FORMAT) - H.now()
+        self.assertTrue(29 <= left.days <= 30)
+        soon = (H.now() + datetime.timedelta(days=2)).strftime(H.TIME_FORMAT)
+        self.store._run("UPDATE admin_sessions SET expires_at = ?", (soon,))
+        self.assertEqual("Bader", self.store.admin_of_token("1" * 32))
+        row = self.store._all("SELECT * FROM admin_sessions")[0]
+        self.assertGreaterEqual((datetime.datetime.strptime(row["expires_at"], H.TIME_FORMAT) - H.now()).days, 29)
+
+    def test_only_the_hash_of_the_token_is_stored_never_the_token_or_the_password(self):
+        token = "ab12" * 8
+        self.store.remember_admin(token, "Bader", "my-secret-pass")
+        rows = self.store._all("SELECT * FROM admin_sessions")
+        self.assertEqual(1, len(rows))
+        text = " ".join(str(v) for v in rows[0].values())
+        self.assertNotIn(token, text)
+        self.assertNotIn("my-secret-pass", text)
+        self.assertEqual(self.store.token_hash(token), rows[0]["token_hash"])
+        self.assertEqual(64, len(rows[0]["token_hash"]))
+
+    def test_a_changed_password_signs_the_admin_out(self):
+        self.store.remember_admin("2" * 32, "Bader", "old-pass-1")
+        self.assertEqual("Bader", self.store.admin_of_token("2" * 32, {"Bader": "old-pass-1"}))
+        self.assertIsNone(self.store.admin_of_token("2" * 32, {"Bader": "new-pass-2"}))
+        self.assertIsNone(self.store.admin_of_token("2" * 32, {"Bader": "old-pass-1"}))      # and it is gone for good
+
+    def test_a_removed_account_signs_the_admin_out(self):
+        self.store.remember_admin("3" * 32, "Bader", "pass-1")
+        self.assertIsNone(self.store.admin_of_token("3" * 32, {"Sara": "pass-1"}))
+
+    def test_one_admin_can_be_signed_out_everywhere(self):
+        self.store.remember_admin("4" * 32, "Bader")
+        self.store.remember_admin("5" * 32, "Sara")
+        self.store.forget_admin("Bader")
+        self.assertIsNone(self.store.admin_of_token("4" * 32))
+        self.assertEqual("Sara", self.store.admin_of_token("5" * 32))
+
+    def test_an_old_table_that_kept_the_plain_token_is_replaced(self):
+        folder = tempfile.mkdtemp(prefix="atslab-old-")
+        try:
+            import sqlite3
+            con = sqlite3.connect(os.path.join(folder, H.DB_NAME))
+            con.execute("CREATE TABLE admin_sessions (token TEXT PRIMARY KEY, admin TEXT NOT NULL, created_at TEXT NOT NULL, "
+                        "seen_at TEXT NOT NULL)")
+            con.execute("INSERT INTO admin_sessions VALUES ('plain-token', 'Bader', 'x', 'x')")
+            con.commit(); con.close()
+            store = H.Store(folder)
+            self.assertEqual([], store._all("SELECT * FROM admin_sessions"))      # the plain token is gone
+            store.remember_admin("6" * 32, "Bader")
+            self.assertEqual("Bader", store.admin_of_token("6" * 32))
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
 
     def test_a_reset_of_the_data_keeps_the_sign_in(self):
         self.store.remember_admin("e" * 32, "Bader")

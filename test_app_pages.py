@@ -177,6 +177,82 @@ class TestAdminLogin(Env):
         self.assertIn(A.ADMIN_TEXT["login_title"], all_text(at))
 
 
+class TestStayingSignedInOnThePage(Env):
+    """An admin who signed in stays signed in after a refresh, a new tab or a new window (the cookie brings them back)
+    until they press Sign out, change the password, or 30 days pass."""
+    def page(self, cookie=None):
+        from unittest import mock
+        patch = mock.patch.object(A.P, "admin_token", return_value=cookie)
+        patch.start()
+        self.addCleanup(patch.stop)
+        return AppTest.from_function(admin_app, default_timeout=120)
+
+    def sign_in(self):
+        at = self.page().run()
+        at.text_input[0].set_value("Tester")
+        at.text_input[1].set_value("right-pass-1")
+        at.button[0].click().run()
+        self.assertEqual(at.session_state["admin"], "Tester")
+        return at
+
+    def cookie_scripts(self, at):
+        return [e.proto.body for e in at.get("html") if "atsl_admin" in e.proto.body]
+
+    def test_signing_in_stores_only_a_hash_and_writes_the_cookie_in_the_page_that_stays(self):
+        at = self.sign_in()
+        token = at.session_state["admin_token"]
+        rows = self.store._all("SELECT * FROM admin_sessions")
+        self.assertEqual([self.store.token_hash(token)], [r["token_hash"] for r in rows])
+        self.assertNotIn(token, " ".join(str(v) for v in rows[0].values()))
+        scripts = self.cookie_scripts(at)
+        self.assertEqual(1, len(scripts), scripts)
+        self.assertIn(f"atsl_admin={token}", scripts[0])
+        self.assertIn("Max-Age=2592000", scripts[0])                    # 30 days
+        self.assertNotIn("right-pass-1", scripts[0])
+
+    def test_a_refresh_new_tab_or_window_with_the_cookie_is_still_signed_in(self):
+        token = self.sign_in().session_state["admin_token"]
+        again = self.page(cookie=token).run()                            # a new session that sends the cookie
+        self.assertFalse(again.exception, again.exception)
+        self.assertEqual(again.session_state["admin"], "Tester")
+        self.assertNotIn(A.ADMIN_TEXT["login_title"], all_text(again))
+        self.assertEqual(1, len(self.cookie_scripts(again)))             # the cookie is renewed for 30 more days
+        third = self.page(cookie=token).run()                            # and again, any number of times
+        self.assertEqual(third.session_state["admin"], "Tester")
+
+    def test_without_the_cookie_the_sign_in_page_shows(self):
+        self.sign_in()
+        other = self.page(cookie=None).run()                             # another browser
+        self.assertNotIn("admin", other.session_state)
+        self.assertIn(A.ADMIN_TEXT["login_title"], all_text(other))
+
+    def test_sign_out_ends_it_for_good(self):
+        at = self.sign_in()
+        token = at.session_state["admin_token"]
+        at.sidebar.button(key="sign_out").click().run()
+        self.assertNotIn("admin", at.session_state)
+        self.assertIn(A.ADMIN_TEXT["login_title"], all_text(at))
+        self.assertEqual([], self.store._all("SELECT * FROM admin_sessions"))
+        again = self.page(cookie=token).run()                            # the old cookie is still in the browser
+        self.assertNotIn("admin", again.session_state)
+        self.assertIn(A.ADMIN_TEXT["login_title"], all_text(again))
+        self.assertTrue([e for e in again.get("html") if "Max-Age=0" in e.proto.body])     # and is deleted
+
+    def test_a_changed_password_signs_the_admin_out(self):
+        token = self.sign_in().session_state["admin_token"]
+        os.environ["ATSLAB_ADMINS"] = '{"Tester": "brand-new-pass-9", "Sara": "other-pass-2"}'
+        again = self.page(cookie=token).run()
+        self.assertNotIn("admin", again.session_state)
+        self.assertIn(A.ADMIN_TEXT["login_title"], all_text(again))
+
+    def test_a_cookie_after_30_days_does_not_work(self):
+        token = self.sign_in().session_state["admin_token"]
+        old = (H.now() - dt.timedelta(minutes=1)).strftime(H.TIME_FORMAT)
+        self.store._run("UPDATE admin_sessions SET expires_at = ?", (old,))
+        again = self.page(cookie=token).run()
+        self.assertNotIn("admin", again.session_state)
+
+
 # ---------------------------------------------------------------------------
 # Secrets and settings
 # ---------------------------------------------------------------------------

@@ -158,16 +158,24 @@ def admin_token():
     return known if isinstance(known, str) and re.fullmatch(r"[0-9a-f]{32}", known) else None
 
 
+ADMIN_COOKIE_DAYS = 30
+
+
+def _cookie_js(value, max_age):
+    """The one line of script that writes (or, with max_age 0, deletes) the sign-in cookie. `value` is only ever our
+    own random hex token or empty. "Secure" is added on https, so the cookie never travels over plain http."""
+    return (f'<script>document.cookie = "{ADMIN_COOKIE}={value}; Max-Age={max_age}; Path=/; SameSite=Lax" + '
+            f'(location.protocol === "https:" ? "; Secure" : "");</script>')
+
+
 def set_admin_token(token):
-    """Keep this browser signed in: a random token in a cookie for a month (only our own hex token is written)."""
-    st.html(f'<script>document.cookie = "{ADMIN_COOKIE}={token}; Max-Age=2592000; Path=/; SameSite=Lax";</script>',
-            unsafe_allow_javascript=True)
+    """Keep this browser signed in: a random token in a cookie for 30 days (only our own hex token is written)."""
+    st.html(_cookie_js(token, ADMIN_COOKIE_DAYS * 86400), unsafe_allow_javascript=True)
 
 
 def clear_admin_token():
     """Forget the sign-in of this browser (Sign out)."""
-    st.html(f'<script>document.cookie = "{ADMIN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax";</script>',
-            unsafe_allow_javascript=True)
+    st.html(_cookie_js("", 0), unsafe_allow_javascript=True)
 
 
 def visitor_keys():

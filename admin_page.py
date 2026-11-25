@@ -186,11 +186,12 @@ def login_card():
 
 
 def remember_me(who):
-    """Stay signed in on this browser: a random token in its cookie and in the store (never a password)."""
+    """Stay signed in on this browser: a random token (its hash goes to the database), never a password. The cookie
+    itself is written by keep_cookie() on the next page draw, not in the run that ends in st.rerun()."""
     token = secrets.token_hex(16)
-    store().remember_admin(token, who)
+    store().remember_admin(token, who, S.admin_accounts().get(who))
     st.session_state["admin_token"] = token
-    P.set_admin_token(token)
+    st.session_state.pop("admin_cookie_sent", None)
     return token
 
 
@@ -199,14 +200,23 @@ def restore_login():
     token = st.session_state.get("admin_token") or P.admin_token()
     if not token:
         return None
-    who = store().admin_of_token(token)
+    who = store().admin_of_token(token, S.admin_accounts())
     if who:
         st.session_state["admin"] = who
         st.session_state["admin_token"] = token
         return who
-    st.session_state.pop("admin_token", None)        # an old token (or a signed-out one): ask again
+    st.session_state.pop("admin_token", None)        # an old token (a signed-out one, a changed password): ask again
     P.clear_admin_token()
     return None
+
+
+def keep_cookie():
+    """Write the sign-in cookie (30 days from now) once per session, in a run that is drawn and stays: the first one
+    after the sign in, or the first one after the cookie brought the admin back (that renews it)."""
+    token = st.session_state.get("admin_token")
+    if token and st.session_state.get("admin_cookie_sent") != token:
+        P.set_admin_token(token)
+        st.session_state["admin_cookie_sent"] = token
 
 
 def sign_out():
@@ -214,7 +224,7 @@ def sign_out():
     if token:
         store().forget_token(token)
         P.clear_admin_token()
-    for k in ("admin", "result", "open_check", "confirm_delete", "admin_view", "upload_round"):
+    for k in ("admin", "result", "open_check", "confirm_delete", "admin_view", "upload_round", "admin_cookie_sent"):
         st.session_state.pop(k, None)
 
 
@@ -1546,6 +1556,7 @@ def admin_body():
         login_card()
         P.version_line()
         return
+    keep_cookie()
     view = current_view()
     n_review = len(store().needs_review(P.review_rules()))
     n_bugs = store().new_bugs()                      # the number beside "Bug audit"
