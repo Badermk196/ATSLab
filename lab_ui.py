@@ -513,6 +513,16 @@ section[data-testid="stSidebar"] [class*="st-key-nav_"] button:hover {background
 .so-bench th, .so-bench td {text-align: left; padding: 9px 12px; border: none; border-bottom: 1px solid var(--a-line);
   color: var(--a-text);}
 .so-bench th {color: var(--a-muted); font-weight: 600; font-size: .8rem;}
+/* the Benchmark tables: the old benchmark's look, with the score colours (red under 50%, yellow 50-69%, green 70%+) */
+.bm-table td {white-space: nowrap;}
+.bm-table td.a-ok {background: var(--a-ok-bg); color: var(--a-ok);}
+.bm-table td.a-warn {background: var(--a-warn-bg); color: var(--a-warn);}
+.bm-table td.a-bad {background: var(--a-bad-bg); color: var(--a-bad);}
+.bm-note {color: var(--a-muted); font-size: .8rem; margin: 6px 0 4px 0;}
+.st-key-card-bench-form, .st-key-card-bench-running, .st-key-card-bench-error {margin-bottom: 14px;}
+[class*="st-key-card-bench-job-"] {margin-top: 14px; padding: 18px 20px;}
+[class*="st-key-card-bench-result-"] .so-bench-head {margin-top: 20px;}
+[class*="st-key-card-bench-result-"] [data-testid="stHorizontalBlock"] {margin: 8px 0 6px 0;}
 .so-section-note {color: var(--a-muted); font-size: .82rem; margin: 12px 0 4px 0;}
 .st-key-card-so-matcher, .st-key-card-so-checker2 {padding: 18px 20px;}
 /* "Check again" / "Check with ...": wide enough for its text, which never wraps to a second line */

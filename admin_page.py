@@ -25,6 +25,7 @@ import streamlit as st
 
 import dashboard as D
 import lab_bugs as BG
+import lab_benchmark as B
 import lab_node as LN
 import lab_pages as P
 import lab_second as SO
@@ -781,6 +782,154 @@ def check_view(who):
 
 
 # ---------------------------------------------------------------------------
+# Benchmark: the user's original resume against the 1000Jobs resume for 1 to 5 jobs
+# ---------------------------------------------------------------------------
+BT = T.BENCH_TEXT
+
+
+def bench_form(who):
+    """The inputs: the user's name, the original resume, and for each job its title, description and 1000Jobs resume.
+    -> the inputs for lab_benchmark.start when "Run benchmark" was pressed and everything is there, else None."""
+    round_ = st.session_state.get("bench_round", 0)
+    with st.container(key="card-bench-form"):
+        name = st.text_input(BT["name"], placeholder=BT["name_hint"], key=f"bm_name_{round_}")
+        original = st.file_uploader(BT["original"], type=["pdf"], key=f"bm_orig_{round_}")
+        n = st.segmented_control(BT["jobs_count"], list(range(1, B.MAX_JOBS + 1)), default=1, key=f"bm_n_{round_}",
+                                 selection_mode="single") or 1
+    jobs = []
+    for i in range(1, n + 1):
+        with st.container(key=f"card-bench-job-{i}"):
+            st.markdown(f'<div class="a-h3">{UI.esc(BT["job_n"].format(n=i))}</div>', unsafe_allow_html=True)
+            title = st.text_input(BT["job_title"], placeholder=BT["job_title_hint"], key=f"bm_title_{round_}_{i}")
+            text = st.text_area(BT["job_text"], placeholder=BT["job_text_hint"], height=150,
+                                key=f"bm_text_{round_}_{i}")
+            pdf = st.file_uploader(BT["job_resume"], type=["pdf"], key=f"bm_pdf_{round_}_{i}")
+            jobs.append((title, text, pdf))
+    if not st.button(BT["run"], type="primary", width="stretch", key="bm_run", icon=":material/arrow_forward:",
+                     icon_position="right"):
+        return None
+    problems = []
+    if original is None:
+        problems.append(BT["need_original"])
+    for i, (title, text, pdf) in enumerate(jobs, start=1):
+        for what, value in (("title", title.strip()), ("text", text.strip()), ("pdf", pdf)):
+            if not value:
+                problems.append(BT["need_job"].format(n=i, what=BT["what"][what]))
+    if problems:
+        for problem in problems:
+            st.error(problem)
+        return None
+    files = [original] + [pdf for _t, _x, pdf in jobs]
+    for file in files:
+        if not file.getvalue().lstrip()[:5] == b"%PDF-":
+            st.error(BT["pdf_only"].format(name=file.name))
+            return None
+    return {"name": " ".join(name.split()) or B.guess_name(original.getvalue(), original.name),
+            "original": (original.getvalue(), original.name),
+            "jobs": [{"title": " ".join(t.split()), "text": x.strip(), "pdf": pdf.getvalue(), "filename": pdf.name}
+                     for t, x, pdf in jobs]}
+
+
+@st.fragment(run_every=2)
+def bench_progress(run_id):
+    """The progress message of a running benchmark (it looks again every 2 seconds; nothing else on the page moves)."""
+    info = B.progress(run_id)
+    if info is None or info["state"] != "running":
+        st.rerun()                                   # finished (or lost): the whole page draws the result
+        return
+    total = max(1, info["total"])
+    st.progress(min(1.0, info["done"] / total), text=BT["progress"].format(done=info["done"], total=total,
+                                                                            message=info["message"]))
+
+
+def bench_downloads(data, key):
+    a, b, _ = st.columns([1.3, 1.3, 2])
+    a.download_button(BT["download_png"], B.png_bytes(data), file_name=B.file_stem(data) + ".png", mime="image/png",
+                      icon=":material/image:", key=f"bm_png_{key}", width="stretch")
+    b.download_button(BT["download_pdf"], B.pdf_bytes(data), file_name=B.file_stem(data) + ".pdf",
+                      mime="application/pdf", icon=":material/picture_as_pdf:", key=f"bm_pdf_{key}",
+                      width="stretch", type="primary")
+
+
+def bench_result(data, key, saved_note=""):
+    """The tables of a finished benchmark, with the downloads."""
+    n = len(data.get("jobs") or [])
+    with st.container(key=f"card-bench-result-{key}"):
+        st.markdown(f'<div class="a-h3">{UI.esc(BT["result_title"].format(name=data.get("name") or ""))}</div>'
+                    f'<p class="a-sub">{UI.esc(BT["result_sub"].format(n=n, s=T.plural(n)))}</p>',
+                    unsafe_allow_html=True)
+        bench_downloads(data, key)
+        st.markdown(B.all_tables_html(data), unsafe_allow_html=True)
+        st.markdown(f'<div class="bm-note">{UI.esc(BT["legend"])}</div>'
+                    + (f'<div class="bm-note">{UI.esc(saved_note)}</div>' if saved_note else ""), unsafe_allow_html=True)
+
+
+def bench_start(inputs, who):
+    store_ = store()
+
+    def save(data):
+        cid = store_.add_benchmark(data, who)
+        orig, new = B.overall(data)
+        n = len(data["jobs"])
+        store_.log(who, "benchmark", data.get("name") or "",
+                   T.LOG_DETAILS["benchmark"].format(jobs=n, s=T.plural(n), orig="-" if orig is None else f"{orig}%",
+                                                     new="-" if new is None else f"{new}%"))
+        return cid
+
+    st.session_state["bench_run"] = B.start(inputs, who, save)
+
+
+def bench_new():
+    st.session_state.pop("bench_run", None)
+    st.session_state["bench_round"] = st.session_state.get("bench_round", 0) + 1
+
+
+def benchmark_view(who):
+    st.markdown(UI.page_title(BT["title"], BT["sub"]), unsafe_allow_html=True)
+    run_id = st.session_state.get("bench_run")
+    info = B.progress(run_id) if run_id else None
+    if run_id and info is None:
+        st.session_state.pop("bench_run", None)       # the server restarted: nothing to show
+    if info is None:
+        inputs = bench_form(who)
+        if inputs is not None:
+            bench_start(inputs, who)
+            st.rerun()
+        return
+    if info["state"] == "running":
+        with st.container(key="card-bench-running"):
+            st.markdown(f'<div class="a-h3">{UI.esc(BT["running_title"])}</div><p class="a-sub">'
+                        f'{UI.esc(BT["running_sub"])}</p>', unsafe_allow_html=True)
+            bench_progress(run_id)
+        return
+    st.button(BT["again"], icon=":material/add:", type="primary", key="bm_new", on_click=bench_new)
+    if info["state"] == "error":
+        with st.container(key="card-bench-error"):
+            st.markdown(f'<div class="a-h3">{UI.esc(BT["error_title"])}</div>', unsafe_allow_html=True)
+            st.error(info["error"])
+        return
+    bench_result(info["data"], run_id, BT["saved"] if info.get("history_id") else BT["not_saved"])
+
+
+def benchmark_page(rec, cid, who):
+    """History: a saved benchmark on its own (the tables are drawn again from the saved data). report_page has already
+    drawn the "Back to the list" button."""
+    data = (rec.get("parts") or {}).get("benchmark") or {}
+    with st.container(key="card-open"):
+        a, b = st.columns([3, 1.1], vertical_alignment="center")
+        a.markdown(f'<div class="a-who">{UI.tag(BT["history_tag"], "info")}<div style="min-width:0">'
+                   f'<div class="a-name">{UI.esc(candidate(rec))}</div><div class="a-meta"><span>'
+                   f'{UI.esc(rec["file_name"])}</span><span>{when(rec["created_at"])}</span><span>'
+                   f'{UI.esc(source_of(rec))}</span><span>{UI.esc(job_of(rec))}</span></div></div></div>',
+                   unsafe_allow_html=True)
+        b.button(ADMIN_TEXT["delete"], icon=":material/delete:", key="open_delete", width="stretch",
+                 on_click=lambda: st.session_state.update(confirm_delete=[cid]))
+        confirm_box(who)
+    if data.get("jobs"):
+        bench_result(data, f"h{cid}")
+
+
+# ---------------------------------------------------------------------------
 # History
 # ---------------------------------------------------------------------------
 def filter_rows(rows, q="", label=None, job=None, dates=(), by=None):
@@ -926,8 +1075,15 @@ def history_table(rows, page_rows):
             c[2].markdown(f'<div class="a-cell">{when(r["created_at"])}</div>', unsafe_allow_html=True)
             c[3].markdown(UI.tag(source_of(r), "grey" if r["checked_by"] == H.USER else "pri"), unsafe_allow_html=True)
             c[4].markdown(f'<div class="a-cell">{UI.esc(job_of(r))}</div>', unsafe_allow_html=True)
-            c[5].markdown(f'<div class="a-who">{UI.pill(r["score"], r["label"])}<span class="a-cell">'
-                          f'{UI.esc(r["label"])}</span></div>', unsafe_allow_html=True)
+            if r["label"] == H.BENCHMARK:           # a benchmark: the tag and "original % -> 1000Jobs %"
+                orig, new = B.overall((r.get("parts") or {}).get("benchmark") or {})
+                change = B.signed(None if orig is None or new is None else new - orig)   # "+7%": the change, short
+                c[5].markdown(f'<div class="a-who">{UI.tag(BT["history_tag"], "info")}<span class="a-cell" title="'
+                              f'{UI.esc(BT["history_col"].format(orig=orig, new=new))}">{UI.esc(change)}</span></div>',
+                              unsafe_allow_html=True)
+            else:
+                c[5].markdown(f'<div class="a-who">{UI.pill(r["score"], r["label"])}<span class="a-cell">'
+                              f'{UI.esc(r["label"])}</span></div>', unsafe_allow_html=True)
             c[6].markdown(review_cell(r), unsafe_allow_html=True)
             c[7].button(ADMIN_TEXT["open"], icon=":material/chevron_right:", key=f"hopen_{r['id']}", type="tertiary",
                         on_click=lambda cid=r["id"]: st.session_state.update(open_check=cid), help=ADMIN_TEXT["open"])
@@ -949,7 +1105,8 @@ def history_view(who):
         clear_confirm("history", ADMIN_TEXT["clear_history_ask"], ADMIN_TEXT["clear_history_yes"],
                       lambda: clear_history(who))
     n_user = sum(r["checked_by"] == H.USER for r in rows)
-    avg = round(sum(r["score"] or 0 for r in rows) / len(rows)) if rows else 0   # a whole number already
+    scored = [r for r in rows if r["label"] != H.BENCHMARK]            # a benchmark is not a resume score
+    avg = round(sum(r["score"] or 0 for r in scored) / len(scored)) if scored else 0   # a whole number already
     n_review = sum(bool(r["review_reasons"]) and not r["reviewed_by"] for r in rows)
     st.markdown(UI.stat_cards([(ADMIN_TEXT["stat_checks"], len(rows), ""), (ADMIN_TEXT["stat_avg"], avg, ""),
                                (ADMIN_TEXT["stat_user"], n_user, ""), (ADMIN_TEXT["stat_review"], n_review, "warn")]),
@@ -1049,6 +1206,8 @@ def report_page(cid, who):
     if rec is None:
         st.session_state.pop("open_check", None)
         return st.info(ADMIN_TEXT["no_match"])
+    if rec.get("label") == H.BENCHMARK:
+        return benchmark_page(rec, cid, who)
     rec["review_reasons"] = H.reasons_for(H.facts_of(rec), P.review_rules())
     with st.container(key="card-open"):
         a, b = st.columns([3, 1.1], vertical_alignment="center")
@@ -1563,6 +1722,6 @@ def admin_body():
     P.start_page("admin", nav_css(view, n_review, n_bugs) + UI.drop_zone(ADMIN_TEXT["drop"], ADMIN_TEXT["browse"],
                                                                  ADMIN_TEXT["drop_hint"]))
     sidebar(who, view)
-    {"check": check_view, "history": history_view, "review": review_view, "settings": settings_view,
+    {"check": check_view, "benchmark": benchmark_view, "history": history_view, "review": review_view, "settings": settings_view,
      "log": log_view, "bugs": bugs_view}[view](who)
     P.version_line()

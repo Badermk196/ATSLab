@@ -30,6 +30,7 @@ FILES = "resumes"
 REVIEW_SCORE = 55                 # "Needs review": a score under this (the default; a setting: review_score)
 DEFAULT_RULES = {"score": REVIEW_SCORE, "critical": False, "contact": False}
 USER = "user"                     # who checked it, for a check made on the User page
+BENCHMARK = "Benchmark"            # the History label of a saved benchmark (lab_benchmark.py); its data is in `parts`
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 READ_TTL = 20                    # seconds a kept read (settings, history rows, new-bug count) stays valid; any write here drops it
 CLEAN_EVERY = 600                 # seconds: cleanup_files() runs at most this often per store (see maybe_cleanup)
@@ -355,8 +356,21 @@ class Store:
             f"SELECT {', '.join(c for c in COLUMNS if c not in HEAVY)}, id FROM checks ORDER BY id DESC LIMIT ?",
             (limit,))]
         for r in rows:
-            r["review_reasons"] = reasons_for(facts_of(r), rules)
+            r["review_reasons"] = [] if r.get("label") == BENCHMARK else reasons_for(facts_of(r), rules)
         return rows
+
+    def add_benchmark(self, data, admin):
+        """Save a finished benchmark in the History: labelled "Benchmark", with the user's name and the date. The
+        tables are kept as data in `parts`; the page draws them again from it. It is never "Needs review". -> row id."""
+        import lab_benchmark as B
+        _orig, new = B.overall(data)
+        jobs = data.get("jobs") or []
+        titles = ", ".join(j.get("title") or "" for j in jobs)
+        return self.add_check({"checked_by": admin, "candidate": data.get("name") or "",
+                               "file_name": f"Benchmark ({len(jobs)} job{'s' if len(jobs) != 1 else ''})",
+                               "with_job": 1, "job_title": titles[:200], "score": new if new is not None else 0,
+                               "label": BENCHMARK, "parts": {"benchmark": data}, "issues": [], "review_reasons": [],
+                               "review_facts": {}})
 
     def needs_review(self, rules=None):
         """Checks with a reason to look at them (under `rules`) that nobody has marked "Reviewed" yet, newest first."""

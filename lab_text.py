@@ -15,6 +15,7 @@ BRAND = "1000Jobs"
 # view key -> (sidebar label, Material icon)
 NAV = {
     "check": ("Check a resume", ":material/upload_file:"),
+    "benchmark": ("Benchmark", ":material/compare_arrows:"),
     "history": ("History", ":material/history:"),
     "review": ("Needs review", ":material/warning:"),
     "bugs": ("Bug audit", ":material/bug_report:"),
@@ -159,6 +160,7 @@ LOG_KINDS = {
     "sign_in": ("Sign-ins", "Signed in"),
     "training": ("Teaching", "Set an issue aside"),
     "bug": ("Bugs", "Reported a bug"),
+    "benchmark": ("Benchmarks", "Ran a benchmark"),
 }
 LOG_DETAILS = {
     "check": "{job} · score {score} · {label}",
@@ -171,6 +173,7 @@ LOG_DETAILS = {
     "export": "{what} · {n} record{s}", "export_history": "History", "export_log": "Activity log",
     "sign_in": "Admin page",
     "training": "Set aside ({reason})",
+    "benchmark": "{jobs} job{s} · original {orig} → 1000Jobs {new}",
 }
 
 # Settings: key -> (title, description). The order here is the order on the Settings page.
@@ -386,3 +389,32 @@ QUEUE_TEXT = {
 def plural(n):
     """'' for 1, 's' otherwise: for texts like 'record{s}'."""
     return "" if n == 1 else "s"
+
+
+# The Benchmark view: the original resume against the 1000Jobs resume for 1 to 5 jobs, three checkers each
+BENCH_TEXT = {
+    "title": "Benchmark",
+    "sub": "The user's own resume against the 1000Jobs resume made for each job, checked by three checkers.",
+    "name": "The user's name", "name_hint": "e.g. Sara Ali (read from the resume when left empty)",
+    "original": "The user's original resume (PDF)",
+    "jobs_count": "How many jobs", "job_n": "Job {n}",
+    "job_title": "Job title", "job_title_hint": "e.g. Delivery Lead",
+    "job_text": "Job description", "job_text_hint": "Paste the full job description here",
+    "job_resume": "The 1000Jobs resume made for this job (PDF)",
+    "run": "Run benchmark", "again": "New benchmark",
+    "need_original": "Add the user's original resume (a PDF).",
+    "need_job": "Job {n}: add the {what}.", "what": {"title": "job title", "text": "job description",
+                                                      "pdf": "1000Jobs resume (a PDF)"},
+    "pdf_only": "{name} is not a PDF. The Benchmark reads PDF files.",
+    "running_title": "Running the benchmark",
+    "running_sub": "It runs in the background: you can leave this page and find the result in History when it is done.",
+    "progress": "{done} of {total} checks · {message}",
+    "error_title": "The benchmark could not finish",
+    "result_title": "Benchmark for {name}",
+    "result_sub": "{n} job{s} · original resume against the 1000Jobs resume · whole percentages",
+    "saved": "Saved in History as \"Benchmark\".", "not_saved": "The tables are shown here, but could not be saved in History.",
+    "download_png": "Download image (PNG)", "download_pdf": "Download PDF",
+    "legend": "Red under 50% · yellow 50-69% · green 70% and above. Change = 1000Jobs resume minus original resume.",
+    "history_tag": "Benchmark", "history_col": "Original {orig}% → 1000Jobs {new}%", "open_title": "Benchmark · {name}",
+    "from_resume": "(read from the resume)",
+}
