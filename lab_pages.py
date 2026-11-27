@@ -8,6 +8,7 @@ import contextlib
 import re
 import secrets
 import threading
+import time
 
 import streamlit as st
 
@@ -21,7 +22,10 @@ import lab_version as V
 import lab_warmup as W
 
 MAX_RUNNING = 3                 # checks running at the same time; the others wait in the queue
-QUEUE_POLL = 1.0                # seconds between two updates of "N people ahead of you"
+QUEUE_POLL = 1.0                # seconds between two looks of a waiting visitor
+STALE_WAIT = 15.0               # a waiting visitor who has not looked for this long has left: drop the place
+CHECK_TIMEOUT = 300.0           # a check that runs longer than this (seconds) gives its slot back
+QUEUE_TIMEOUT = 240.0           # nobody waits longer than this (seconds) for a slot
 BROWSER_COOKIE = "atsl_browser"
 THEME_COOKIE = "atsl_theme"     # the visitor's light / dark choice (the sun / moon button)
 ADMIN_COOKIE = "atsl_admin"     # the Admin page's "stayed signed in" token (never a password)
@@ -184,34 +188,67 @@ def visitor_keys():
 
 
 # ---------------------------------------------------------------------------
-# The queue: at most MAX_RUNNING checks at the same time, the others wait their turn (first come, first served)
+# The queue: at most MAX_RUNNING checks at the same time, the others wait their turn (first come, first served).
+# Nothing here is shown to the visitor as a number. Every entry cleans itself up: a waiting visitor who stops
+# answering (tab closed, page rerun) is dropped after STALE_WAIT seconds, a check that runs longer than
+# CHECK_TIMEOUT seconds gives its slot back, and nobody waits longer than QUEUE_TIMEOUT seconds.
 # ---------------------------------------------------------------------------
+class QueueTimeout(Exception):
+    """Nobody got a free slot in time (the message is meant for the visitor)."""
+
+
 class CheckQueue:
-    def __init__(self, slots=MAX_RUNNING):
+    def __init__(self, slots=MAX_RUNNING, clock=time.monotonic):
         self.slots = slots
-        self.running = 0
         self.waiting = []                   # tickets, in arrival order
+        self.running_since = {}             # ticket -> when its check started
+        self.seen = {}                      # waiting ticket -> the last time it asked
+        self._clock = clock
         self._next = 0
         self._cond = threading.Condition()
 
+    @property
+    def running(self):
+        return len(self.running_since)
+
+    def _clean(self):
+        """Drop what was left behind (call with the lock held)."""
+        now, changed = self._clock(), False
+        for ticket in [t for t in self.waiting if now - self.seen.get(t, now) > STALE_WAIT]:
+            self.waiting.remove(ticket)
+            self.seen.pop(ticket, None)
+            changed = True
+        for ticket in [t for t, since in self.running_since.items() if now - since > CHECK_TIMEOUT]:
+            del self.running_since[ticket]
+            changed = True
+        if changed:
+            self._cond.notify_all()
+
     def join(self):
         with self._cond:
+            self._clean()
             self._next += 1
             self.waiting.append(self._next)
+            self.seen[self._next] = self._clock()
             return self._next
 
     def ahead(self, ticket):
-        """People waiting before this ticket (0: next)."""
+        """People waiting before this ticket (0: next). Used by the tests, never shown to a visitor."""
         with self._cond:
+            self._clean()
             return self.waiting.index(ticket) if ticket in self.waiting else 0
 
     def try_start(self, ticket):
         """Start when a slot is free and nobody who came earlier is still waiting for one."""
         with self._cond:
+            if ticket in self.waiting:
+                self.seen[ticket] = self._clock()        # still here
+            self._clean()
             free = self.slots - self.running
             if ticket in self.waiting and self.waiting.index(ticket) < free:
                 self.waiting.remove(ticket)
-                self.running += 1
+                self.seen.pop(ticket, None)
+                self.running_since[ticket] = self._clock()
                 return True
             return False
 
@@ -224,11 +261,15 @@ class CheckQueue:
         with self._cond:
             if ticket in self.waiting:
                 self.waiting.remove(ticket)
+                self.seen.pop(ticket, None)
                 self._cond.notify_all()
 
-    def done(self):
+    def done(self, ticket=None):
+        """A check finished, failed or was stopped: its slot is free again (the oldest one when no ticket is given)."""
         with self._cond:
-            self.running = max(0, self.running - 1)
+            if ticket is None and self.running_since:
+                ticket = min(self.running_since, key=self.running_since.get)
+            self.running_since.pop(ticket, None)
             self._cond.notify_all()
 
 
@@ -238,27 +279,25 @@ def check_queue():
     return CheckQueue()
 
 
-def queue_text(n):
-    return QUEUE_TEXT["next"] if n == 0 else QUEUE_TEXT["ahead"].format(n=n, people="person" if n == 1 else "people")
-
-
 @contextlib.contextmanager
 def check_slot(queue=None):
-    """Run the block when it is this visitor's turn; until then show "N people ahead of you"."""
+    """Run the block when it is this visitor's turn. The visitor sees only the caller's loading message, never a
+    queue position. While waiting, the page is touched every second, so a closed tab or a rerun stops the wait."""
     q = queue or check_queue()
     ticket = q.join()
     box = st.empty()
+    started = time.monotonic()
     try:
         while not q.try_start(ticket):
-            box.info(queue_text(q.ahead(ticket)))
+            if time.monotonic() - started > QUEUE_TIMEOUT:
+                raise QueueTimeout(T.QUEUE_TEXT["timeout"])
+            box.empty()                     # a call to Streamlit: it raises when the visitor left or the page reran
             q.wait(QUEUE_POLL)
-    except BaseException:                   # the visitor left or the page was rerun while waiting
+    except BaseException:
         q.leave(ticket)
-        box.empty()
         raise
-    box.empty()
     try:
         W.wait()                            # the model is still loading in the background: wait for it, never load twice
         yield
     finally:
-        q.done()
+        q.done(ticket)                      # always: finished, failed, stopped or timed out

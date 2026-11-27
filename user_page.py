@@ -189,9 +189,11 @@ def check(inputs):
     with_job = bool(inputs["text"])
     r = None
     try:
-        with P.check_slot(), st.spinner(USER_TEXT["checking"]):
+        with st.spinner(USER_TEXT["checking"]), P.check_slot():     # the spinner shows from the first second
             r = D.run_check_reusing(inputs["pdf"], inputs["name"], with_job, inputs["text"],
                                     job_title=inputs["title"] or None)
+    except P.QueueTimeout as e:
+        return st.error(str(e))
     except D.CheckError as e:
         msg = str(e)
         if "API key" in msg or "Keyword extraction failed" in msg or "AI service is busy" in msg:

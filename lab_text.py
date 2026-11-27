@@ -341,7 +341,7 @@ USER_TEXT = {
     "job_title": "Job title", "job_title_hint": "e.g. Brand Marketing Manager",
     "job_text": "Job description", "job_text_hint": "Paste the full job description here",
     "check": "Check my resume", "new": "Check another resume",
-    "checking": "Checking your resume. This usually takes 20 to 60 seconds...",
+    "checking": "Checking your resume… this usually takes under a minute",
     "limit": "You are out of limit. Go premium to try it again.",
     "privacy": "Your resume is analysed with a trusted AI provider to create this report, and for nothing else. "
                "The file is deleted after {days} days.",
@@ -379,10 +379,9 @@ USER_TEXT = {
     "premium": "Get Premium", "session": "Book a resume session",
 }
 
-# the queue (both pages): only a few checks run at the same time
+# the queue (both pages): only a few checks run at the same time; a visitor never sees a queue position
 QUEUE_TEXT = {
-    "ahead": "{n} {people} ahead of you. Your check starts automatically, please keep this page open.",
-    "next": "You're next. Your check starts in a moment, please keep this page open.",
+    "timeout": "The Lab is very busy right now. Please try again in a minute. This check was not counted.",
 }
 
 

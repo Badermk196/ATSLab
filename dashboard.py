@@ -2782,8 +2782,8 @@ def run_check_reusing(pdf_bytes, filename, with_job, text, job_title=None):
 def check_and_store(inputs, gate=None):
     """Check the CV (and the previous version, if given) and keep the result with the inputs that made it."""
     try:
-        with (gate() if gate else contextlib.nullcontext()), \
-                st.spinner("Checking the resume (a new job description is read by AI once, then saved)..."):
+        with st.spinner("Checking the resume (a new job description is read by AI once, then saved)..."), \
+                (gate() if gate else contextlib.nullcontext()):
             res = run_check_reusing(inputs["pdf"], inputs["name"], inputs["with_job"], inputs["text"],
                                     job_title=inputs.get("job_title"))
             prev = None

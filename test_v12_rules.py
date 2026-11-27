@@ -292,7 +292,7 @@ class TestQueue(unittest.TestCase):
         self.assertEqual([q.try_start(t) for t in tickets], [True, True, True, False, False])
         self.assertEqual([q.ahead(t) for t in tickets[3:]], [0, 1])
         self.assertFalse(q.try_start(tickets[4]))                    # never before someone who came earlier
-        q.done()
+        q.done(tickets[0])
         self.assertFalse(q.try_start(tickets[4]))
         self.assertTrue(q.try_start(tickets[3]))
         q.leave(tickets[4])                                          # left the page while waiting
@@ -318,13 +318,60 @@ class TestQueue(unittest.TestCase):
         self.assertEqual(peak[0], 3)
         self.assertEqual((q.running, q.waiting), (0, []))
 
-    def test_what_a_waiting_visitor_reads(self):
-        self.assertEqual(P.queue_text(0), P.QUEUE_TEXT["next"])
-        self.assertTrue(P.queue_text(1).startswith("1 person ahead of you."))
-        self.assertTrue(P.queue_text(4).startswith("4 people ahead of you."))
+    def test_a_visitor_never_reads_a_queue_position(self):
+        self.assertFalse(hasattr(P, "queue_text"))
+        self.assertNotIn("ahead", " ".join(P.QUEUE_TEXT.values()))
         self.assertEqual(P.MAX_RUNNING, 3)
-        self.assertNotIn("about a minute", U.USER_TEXT["checking"])
-        self.assertIn("20 to 60 seconds", U.USER_TEXT["checking"])
+        self.assertEqual(U.USER_TEXT["checking"], "Checking your resume… this usually takes under a minute")
+
+    def test_a_waiting_visitor_who_left_is_dropped(self):
+        now = [0.0]
+        q = P.CheckQueue(1, clock=lambda: now[0])
+        first, ghost, third = q.join(), q.join(), q.join()
+        self.assertTrue(q.try_start(first))
+        now[0] = 5
+        self.assertFalse(q.try_start(third))                         # the third is still here, the ghost is not
+        now[0] = P.STALE_WAIT + 6
+        self.assertFalse(q.try_start(third))
+        self.assertEqual(q.waiting, [third])                         # the ghost's place is gone
+        self.assertEqual(q.ahead(third), 0)
+
+    def test_a_check_that_hangs_gives_its_slot_back(self):
+        now = [0.0]
+        q = P.CheckQueue(1, clock=lambda: now[0])
+        stuck, next_ = q.join(), q.join()
+        self.assertTrue(q.try_start(stuck))
+        now[0] = P.CHECK_TIMEOUT - 1
+        self.assertFalse(q.try_start(next_))
+        now[0] = P.CHECK_TIMEOUT + 1
+        self.assertTrue(q.try_start(next_))
+        q.done(stuck)                                                # the hung check ends late: nothing breaks
+        self.assertEqual(q.running, 1)
+
+    def test_done_is_safe_to_call_twice(self):
+        q = P.CheckQueue(1)
+        t = q.join()
+        q.try_start(t)
+        q.done(t)
+        q.done(t)
+        self.assertEqual((q.running, q.waiting), (0, []))
+
+    def test_check_slot_frees_everything_when_the_check_fails_or_waits_too_long(self):
+        q = P.CheckQueue(1)
+        with self.assertRaises(RuntimeError):
+            with P.check_slot(q):
+                raise RuntimeError("the check crashed")
+        self.assertEqual((q.running, q.waiting), (0, []))
+        holder = q.join()
+        q.try_start(holder)                                          # the only slot is taken
+        old_timeout, P.QUEUE_TIMEOUT = P.QUEUE_TIMEOUT, 0.05
+        try:
+            with self.assertRaises(P.QueueTimeout):
+                with P.check_slot(q):
+                    pass
+        finally:
+            P.QUEUE_TIMEOUT = old_timeout
+        self.assertEqual(q.waiting, [])                              # the one who gave up left no entry
 
 
 # ---------------------------------------------------------------------------
