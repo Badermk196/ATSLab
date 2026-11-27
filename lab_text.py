@@ -65,6 +65,7 @@ ADMIN_TEXT = {
     "roles_confirm": "Continue and build the report",
     "need_both": "For the client comparison report, upload both files: the user's own resume and the 1000Jobs resume.",
     "pair_wait": "Add both files to compare them.",
+    "kept_file": "Using the file you added before: {name}. Add another file here to replace it.",
     "run": "Run check", "checking": "Checking the resume (a new job description is read by AI once, then saved)...",
     "new_check": "Check new resume", "new_check_short": "New check", "again": "Check again",
     "again_job": "Paste the job description to check this resume against the job.",
@@ -313,6 +314,27 @@ BUG_TEXT = {
     "image_kept": "The screenshot is deleted on {date} (only the text stays).",
     "image_gone": "The screenshot was deleted. The text of the report stays.",
     "empty": "No bugs match this filter.", "none": "No bugs have been reported yet.",
+    # the two kinds of feedback
+    "kind_label": "What do you want to tell the Lab?",
+    "kind_bug": "The Lab got something wrong", "kind_missed": "The Lab missed a problem in the resume",
+    "report_hint_missed": "A screenshot of the problem in the resume and one sentence about what the Lab should "
+                          "have caught. The resume itself is never sent - only the screenshot, your sentence and the "
+                          "Lab's own result.",
+    "sentence_missed": "What should the Lab have caught? (one sentence)",
+    "sentence_missed_hint": "Example: The current role, Director at Swvl, has no bullets",
+    "send_missed": "Ask the AI about it",
+    "saved_missed": "Missed issue #{n} saved. The team can decide on it on the Bug audit page.",
+    "list_bug": "Lab bugs", "list_bug_sub": "The Lab got something wrong.",
+    "list_missed": "Missed issues", "list_missed_sub": "The Lab missed a problem in the resume.",
+    "list_count": "{n} in this list, {new} waiting for a decision",
+    "list_none_bug": "No Lab bugs match this filter.", "list_none_missed": "No missed issues match this filter.",
+    "ai_title_missed": "What the AI says",
+    "ai_explanation_missed": "Is it a real resume problem, and how common is it?",
+    "ai_fix_missed": "How the Lab could detect it",
+    "mark_built": "Mark as built",
+    "missed_approved": "Approved: this is now a request for a new check. It does not change any score. "
+                       "Ask the developer to build it separately.",
+    "missed_tag": "request for a new check",
 }
 
 # the reasons a check needs review (also the rule names in the "Needs review" subtitle)

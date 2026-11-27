@@ -324,6 +324,40 @@ def job_fields(round_, prefix=""):
     return title, text
 
 
+class KeptFile:
+    """A file added before, kept on the server for this session (it looks like what st.file_uploader gives)."""
+
+    def __init__(self, name, data):
+        self.name, self._data = name, data
+        self.type, self.size = "application/pdf", len(data)
+
+    def getvalue(self):
+        return self._data
+
+
+def slot_file(slot, uploaded):
+    """The file of one upload slot. Streamlit forgets an uploader's file whenever the page runs without drawing it
+    (the client report switch, the calm "Checking..." page, another menu item): the file is kept here and used again
+    until the visitor removes it with the X or adds another one.
+    -> the uploaded file, a KeptFile, or None."""
+    run_no = st.session_state.get("run_no", 0)
+    state = st.session_state.setdefault("slot_state", {})
+    last_run, had_file = state.get(slot, (None, False))
+    state[slot] = (run_no, uploaded is not None)
+    keep = f"kept_{slot}"
+    if uploaded is not None:
+        st.session_state[keep] = (uploaded.name, uploaded.getvalue())
+        return uploaded
+    if had_file and last_run == run_no - 1:               # it held a file on the run just before: the X was pressed
+        st.session_state.pop(keep, None)
+        return None
+    kept = st.session_state.get(keep)
+    if not kept:
+        return None
+    st.caption(ADMIN_TEXT["kept_file"].format(name=kept[0]))
+    return KeptFile(*kept)
+
+
 def client_slots(round_):
     """The client comparison report's two files, each in its own clearly named slot, with the Swap button between them.
     -> (the file read as the user's own resume, the file read as the 1000Jobs resume, is it read the other way round?).
@@ -333,7 +367,8 @@ def client_slots(round_):
     swapped = bool(st.session_state.get(f"swap_{round_}"))
     left, mid, right = st.columns([1, 0.46, 1], vertical_alignment="center")
     with left:
-        original = st.file_uploader(ADMIN_TEXT["slot_original"], type=D.UPLOAD_TYPES, key=f"c_original_{round_}")
+        original = slot_file(f"c_original_{round_}", st.file_uploader(
+            ADMIN_TEXT["slot_original"], type=D.UPLOAD_TYPES, key=f"c_original_{round_}"))
         st.caption(ADMIN_TEXT["slot_original_hint"])
     with mid:
         if st.button(ADMIN_TEXT["swap"], key=f"swap_btn_{round_}", width="stretch", icon=":material/swap_horiz:",
@@ -341,7 +376,8 @@ def client_slots(round_):
             st.session_state[f"swap_{round_}"] = not swapped
             st.rerun()
     with right:
-        ours = st.file_uploader(ADMIN_TEXT["slot_ours"], type=D.UPLOAD_TYPES, key=f"c_ours_{round_}")
+        ours = slot_file(f"c_ours_{round_}", st.file_uploader(
+            ADMIN_TEXT["slot_ours"], type=D.UPLOAD_TYPES, key=f"c_ours_{round_}"))
         st.caption(ADMIN_TEXT["slot_ours_hint"])
     user_file, ours_file = (ours, original) if swapped else (original, ours)
     if user_file is not None and ours_file is not None:
@@ -382,7 +418,8 @@ def check_form(mode):
     the user's own resume and the 1000Jobs resume in their own slots, with a Swap button and a check before the report."""
     round_ = st.session_state.get("upload_round", 0)
     client = bool(st.session_state.get(f"client_{round_}", False))    # set by the checkbox below, on the run before
-    upload = None if client else st.file_uploader(ADMIN_TEXT["resume"], type=D.UPLOAD_TYPES, key=f"upload_{round_}")
+    upload = None if client else slot_file(f"upload_{round_}", st.file_uploader(
+        ADMIN_TEXT["resume"], type=D.UPLOAD_TYPES, key=f"upload_{round_}"))
     title, text = job_fields(round_) if mode == D.WITH_JOB else ("", "")
     if mode != D.WITH_JOB:
         st.caption(ADMIN_TEXT["general_note"])
@@ -395,7 +432,8 @@ def check_form(mode):
         if client:
             user_file, ours_file, swapped = client_slots(round_)
         else:
-            prev = st.file_uploader(ADMIN_TEXT["previous"], type=D.UPLOAD_TYPES, key=f"previous_{round_}")
+            prev = slot_file(f"previous_{round_}", st.file_uploader(
+                ADMIN_TEXT["previous"], type=D.UPLOAD_TYPES, key=f"previous_{round_}"))
     if st.button(ADMIN_TEXT["run"], type="primary", width="stretch", key="run_check", icon=":material/arrow_forward:",
                  icon_position="right"):
         st.session_state[f"wanted_{round_}"] = True       # the check is wanted: the two files are looked at first
@@ -757,9 +795,13 @@ def check_view(who):
                 st.rerun()                                     # the check then starts with no form left behind it
             st.session_state.pop("pending_check", None)
             run(pending, who)
+            if st.session_state.get("check_error"):       # the check failed: back to the form, the file is kept
+                st.rerun()
             return
         with main:
             with st.container(key="card-check"):
+                if st.session_state.get("check_error"):
+                    st.error(st.session_state.pop("check_error"))      # said once, above the form
                 inputs = check_form(mode)
                 if inputs is not None:
                     st.session_state["pending_check"] = inputs    # the next run draws the clean card and checks
@@ -1516,11 +1558,11 @@ def show_image(data):
 BUG_STEP_COLUMNS = BG.STEP_COLUMNS          # a step name -> its column, defined once in lab_bugs.py
 
 
-def bug_save(res, who, words, image, mime):
-    """Save one bug report and ask the AI about it. -> the new bug id."""
+def bug_save(res, who, words, image, mime, kind=BG.KIND_BUG):
+    """Save one report (a Lab bug or a missed issue) and ask the AI about it. -> the new id."""
     with st.spinner(T.BUG_TEXT["sending"]):
-        ai = BG.ask_ai(image, mime, words, BG.result_text(res))
-    bid = store().add_bug({"who": who, "kind": "bug", "description": words,
+        ai = BG.ask_ai(image, mime, words, BG.result_text(res), kind=kind)
+    bid = store().add_bug({"who": who, "kind": kind, "description": words,
                            "check_id": str(res.get("_uid") or ""), "cv": res.get("cv") or "",
                            "target": res.get("target") or "", "score": res.get("score"),
                            "report": BG.result_text(res), "ai_model": ai.get("model") or "",
@@ -1538,10 +1580,16 @@ def report_bug_control(saved, who):
     res = (saved or {}).get("res") or {}
     tag = str(res.get("_uid") or res.get("cv") or "report")
     with st.expander(T.BUG_TEXT["report_open"]):
-        st.markdown(f'<p class="a-sub">{UI.esc(T.BUG_TEXT["report_hint"])}</p>', unsafe_allow_html=True)
+        choice = st.radio(T.BUG_TEXT["kind_label"], [T.BUG_TEXT["kind_bug"], T.BUG_TEXT["kind_missed"]],
+                          key=f"bug_kind_{tag}", horizontal=True)
+        kind = BG.KIND_MISSED if choice == T.BUG_TEXT["kind_missed"] else BG.KIND_BUG
+        missed = kind == BG.KIND_MISSED
+        st.markdown(f'<p class="a-sub">{UI.esc(T.BUG_TEXT["report_hint_missed" if missed else "report_hint"])}</p>',
+                    unsafe_allow_html=True)
         shot = st.file_uploader(T.BUG_TEXT["screenshot"], type=["png", "jpg", "jpeg", "webp"], key=f"bug_shot_{tag}")
-        words = st.text_input(T.BUG_TEXT["sentence"], key=f"bug_words_{tag}")
-        if st.button(T.BUG_TEXT["send"], key=f"bug_send_{tag}", type="primary"):
+        words = st.text_input(T.BUG_TEXT["sentence_missed" if missed else "sentence"], key=f"bug_words_{tag}",
+                              placeholder=T.BUG_TEXT["sentence_missed_hint"] if missed else None)
+        if st.button(T.BUG_TEXT["send_missed" if missed else "send"], key=f"bug_send_{tag}", type="primary"):
             image = shot.getvalue() if shot is not None else b""
             if not (words or "").strip():
                 st.warning(T.BUG_TEXT["need_words"])
@@ -1552,9 +1600,9 @@ def report_bug_control(saved, who):
                             "big": T.BUG_TEXT["too_big"].format(mb=round(len(image) / 1048576, 1),
                                                                 max=BG.MAX_IMAGE_MB)}[why])
                 return
-            bid = bug_save(res, who, words, image, getattr(shot, "type", ""))
+            bid = bug_save(res, who, words, image, getattr(shot, "type", ""), kind)
             if bid:
-                st.success(T.BUG_TEXT["saved"].format(n=bid))
+                st.success(T.BUG_TEXT["saved_missed" if missed else "saved"].format(n=bid))
 
 
 def bug_decide(bug, state, who, note=""):
@@ -1578,7 +1626,7 @@ def bug_ask_again(bug, who):
         st.warning(T.BUG_TEXT["image_gone"])
         return
     with st.spinner(T.BUG_TEXT["sending"]):
-        ai = BG.ask_ai(image, mime, bug.get("description") or "", bug.get("report") or "")
+        ai = BG.ask_ai(image, mime, bug.get("description") or "", bug.get("report") or "", kind=BG.kind_of(bug))
     store().set_bug_ai(bug["id"], ai)
     store().log(who, "bug", f'#{bug["id"]}', "Asked the AI again")
     st.rerun()
@@ -1601,7 +1649,7 @@ def bug_grid(bugs):
                 st.session_state["bug_open"] = bug["id"]
                 st.rerun()
     opened = st.session_state.get("bug_open")
-    if opened:
+    if opened and any(str(b["id"]) == str(opened) for b in with_image):
         image, _ = store().bug_image(opened)
         if image:
             st.markdown(f'<div class="a-h3">#{UI.esc(opened)}</div>', unsafe_allow_html=True)
@@ -1615,7 +1663,10 @@ def bug_card(bug, who, days):
     """One bug: what happened, what the AI says, the decision, and the fix checklist."""
     bid = bug["id"]
     state = BG.state_of(bug)
+    missed = BG.kind_of(bug) == BG.KIND_MISSED
     title = f'#{bid} · {T.BUG_TEXT["state_" + state]} · {bug.get("cv") or ""}'
+    if missed and state == BG.APPROVED:
+        title += f' · {T.BUG_TEXT["missed_tag"]}'
     with st.expander(title):
         facts = [(T.BUG_TEXT["reporter"], bug.get("who")), (T.BUG_TEXT["when"], when(bug.get("created_at"))),
                  (T.BUG_TEXT["resume"], bug.get("cv")), (T.BUG_TEXT["score"], bug.get("score"))]
@@ -1630,11 +1681,12 @@ def bug_card(bug, who, days):
                        if state in BG.CLOSED else T.BUG_TEXT["image_open"])
         else:
             st.caption(T.BUG_TEXT["image_gone"])
+        sfx = "_missed" if missed else ""
         st.markdown(f'<div class="a-h3">{UI.esc(T.BUG_TEXT["ai_title"])}</div>', unsafe_allow_html=True)
         if bug.get("ai_explanation") or bug.get("ai_fix"):
-            st.markdown(f'<p class="a-sub"><b>{UI.esc(T.BUG_TEXT["ai_explanation"])}:</b> '
+            st.markdown(f'<p class="a-sub"><b>{UI.esc(T.BUG_TEXT["ai_explanation" + sfx])}:</b> '
                         f'{UI.esc(bug.get("ai_explanation") or "")}<br>'
-                        f'<b>{UI.esc(T.BUG_TEXT["ai_fix"])}:</b> {UI.esc(bug.get("ai_fix") or "")}</p>',
+                        f'<b>{UI.esc(T.BUG_TEXT["ai_fix" + sfx])}:</b> {UI.esc(bug.get("ai_fix") or "")}</p>',
                         unsafe_allow_html=True)
         elif bug.get("ai_error"):
             st.markdown(f'<p class="a-sub">{UI.esc(T.BUG_TEXT["ai_failed"].format(why=bug.get("ai_error")))}</p>',
@@ -1652,8 +1704,12 @@ def bug_card(bug, who, days):
             bug_decide(bug, BG.APPROVED, who, note)
         if b.button(T.BUG_TEXT["reject"], key=f"bug_no_{bid}", width="stretch"):
             bug_decide(bug, BG.REJECTED, who, note)
-        if c.button(T.BUG_TEXT["mark_fixed"], key=f"bug_fixed_{bid}", width="stretch"):
+        if c.button(T.BUG_TEXT["mark_built" if missed else "mark_fixed"], key=f"bug_fixed_{bid}", width="stretch"):
             bug_decide(bug, BG.FIXED, who, note)
+        if missed:                      # a missed issue never changes a score: it is a request for a new check
+            if state == BG.APPROVED:
+                st.info(T.BUG_TEXT["missed_approved"])
+            return
         st.markdown(f'<div class="a-h3">{UI.esc(T.BUG_TEXT["steps_title"])}</div>'
                     f'<p class="a-sub">{UI.esc(T.BUG_TEXT["steps_sub"])}</p>', unsafe_allow_html=True)
         for step, label in BG.FIX_STEPS:
@@ -1667,6 +1723,22 @@ def bug_card(bug, who, days):
                 bug_step(bug, step, who)
         if BG.ready_for_score(bug):
             st.success(T.BUG_TEXT["ready"])
+
+
+def bug_list(kind, rows, shown, who, days):
+    """One of the two lists on the Bug audit page: its title, how many are waiting, and its cards."""
+    mine = BG.of_kind(shown, kind)
+    new = BG.summary(rows, kind)[BG.NEW]
+    st.markdown(f'<div class="a-h3" style="margin-top:1.2rem">{UI.esc(T.BUG_TEXT["list_" + kind])}</div>'
+                f'<p class="a-sub">{UI.esc(T.BUG_TEXT["list_" + kind + "_sub"])} '
+                f'{UI.esc(T.BUG_TEXT["list_count"].format(n=len(BG.of_kind(rows, kind)), new=new))}</p>',
+                unsafe_allow_html=True)
+    if not mine:
+        st.markdown(UI.empty("&#128269;", T.BUG_TEXT["list_none_" + kind]), unsafe_allow_html=True)
+        return
+    bug_grid(mine)
+    for bug in mine:
+        bug_card(bug, who, days)
 
 
 def bugs_view(who):
@@ -1691,12 +1763,8 @@ def bugs_view(who):
     state = None if picked in (None, T.BUG_TEXT["all"]) else next((s for s in BG.STATES
                                                                   if T.BUG_TEXT[s] == picked), None)
     shown = BG.find(rows, state, q)
-    if not shown:
-        st.markdown(UI.empty("&#128269;", T.BUG_TEXT["empty"]), unsafe_allow_html=True)
-        return
-    bug_grid(shown)
-    for bug in shown:
-        bug_card(bug, who, days)
+    for kind in BG.KINDS:                            # two separate lists: Lab bugs, and Missed issues
+        bug_list(kind, rows, shown, who, days)
 
 
 
@@ -1706,6 +1774,7 @@ def admin():
 
 
 def admin_body():
+    st.session_state["run_no"] = st.session_state.get("run_no", 0) + 1      # which run this is (see slot_file)
     who = st.session_state.get("admin") or restore_login()    # a browser that signed in before stays signed in
     if who and who not in S.admin_accounts():       # the account was removed: sign in again
         sign_out()

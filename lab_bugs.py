@@ -48,6 +48,22 @@ CLOSED = (FIXED, REJECTED)          # the screenshot is kept `days` after these,
 
 AREAS = ("scoring", "layout", "text", "ui", "other")
 
+# --- the two kinds of feedback ---------------------------------------------------------------------------
+KIND_BUG = "bug"                    # "The Lab got something wrong": a wrong result, works as it always did
+KIND_MISSED = "missed"              # "The Lab missed a problem in the resume": a request for a new check
+KINDS = (KIND_BUG, KIND_MISSED)
+# An approved missed issue never changes a score: it only becomes a request for a new check, built separately.
+
+
+def kind_of(bug):
+    """The kind of a report. Reports saved before there were two kinds are Lab bugs."""
+    return KIND_MISSED if (bug or {}).get("kind") == KIND_MISSED else KIND_BUG
+
+
+def of_kind(bugs, kind):
+    """The reports of one kind."""
+    return [b for b in bugs or [] if kind_of(b) == kind]
+
 # The steps the team must finish before an approved bug is allowed to affect any score.
 FIX_STEPS = (
     ("fix", "The fix is applied to the code"),
@@ -63,10 +79,10 @@ def new_count(bugs):
     return sum(1 for b in bugs or [] if (b.get("state") or NEW) == NEW)
 
 
-def find(bugs, state=None, search=""):
-    """The bugs to show: one state, and/or a word that appears in the description, the resume name or the
-    reporter. An empty filter shows everything."""
-    out = list(bugs or [])
+def find(bugs, state=None, search="", kind=None):
+    """The bugs to show: one kind, one state, and/or a word that appears in the description, the resume name or
+    the reporter. An empty filter shows everything."""
+    out = of_kind(bugs, kind) if kind in KINDS else list(bugs or [])
     if state in STATES:
         out = [b for b in out if (b.get("state") or NEW) == state]
     word = (search or "").strip().lower()
@@ -177,6 +193,30 @@ Rules:
 """
 
 
+MISSED_PROMPT = """You help the 1000Jobs team improve their own resume checker (the "ATS Lab"). An admin says the Lab MISSED a problem in a resume: the Lab did not list it, but it should have.
+
+What the ATS Lab produced (its own result text):
+{result}
+
+What the admin says the Lab should have caught (one sentence):
+{description}
+
+Look at the screenshot the admin attached. The resume file itself is not available to you.
+
+Answer with JSON only, in simple English:
+{{"real_problem": true,
+  "why": "is it a real problem for a resume or an ATS, and why, at most 60 words",
+  "how_common": "how common is this problem in resumes (rare, sometimes, common) and why, at most 40 words",
+  "how_to_detect": "how the Lab could detect it from the resume text and layout: what to look for and where, at most 100 words",
+  "area": "one of: scoring, layout, text, ui, other"}}
+
+Rules:
+- Be honest. If it is not a real problem (or only a style choice), say real_problem = false.
+- The new check should first show a card with NO points. Never propose a change to a score, a weight or a gate.
+- The Lab must stay strict. Never suggest hiding a real problem.
+"""
+
+
 def _json_of(text):
     """The first JSON object in an answer, however the model wrapped it."""
     if not text:
@@ -196,10 +236,23 @@ def _clean(value, limit=600):
     return " ".join(str(value or "").split())[:limit]
 
 
-def ask_ai(image_bytes, mime, description, result, model=MODEL, timeout=TIMEOUT):
+def missed_answer(out):
+    """The AI's answer about a missed issue as the two texts the page stores: explanation (is it a real problem and
+    how common) and fix (how the Lab could detect it)."""
+    real = out.get("real_problem")
+    real = real if isinstance(real, bool) else str(real).strip().lower() in ("true", "yes")
+    why = _clean(out.get("why"), 400)
+    common = _clean(out.get("how_common"), 300)
+    head = "Real resume problem: yes." if real else "Real resume problem: probably not."
+    return {"explanation": " ".join(p for p in (head, why, f"How common: {common}" if common else "") if p),
+            "fix": _clean(out.get("how_to_detect"), 700), "real_problem": real}
+
+
+def ask_ai(image_bytes, mime, description, result, model=MODEL, timeout=TIMEOUT, kind=KIND_BUG):
     """Send the screenshot, the sentence and the Lab's result text to the AI.
 
     -> {"explanation", "fix", "area", "score_change_needed", "lab_was_right", "model", "seconds"}
+       (a missed issue: explanation = is it a real problem and how common, fix = how the Lab could detect it)
        {"error": "no_key" | "no_image" | "http" | "bad_answer" | a network error name, "why": short detail}
 
     Never raises: a failure is a value the page can show."""
@@ -208,7 +261,8 @@ def ask_ai(image_bytes, mime, description, result, model=MODEL, timeout=TIMEOUT)
         return {"error": "no_key", "why": "the AI key is not set on this server"}
     if not image_bytes:
         return {"error": "no_image", "why": "no screenshot was given"}
-    prompt = PROMPT.format(result=_clean(result, 6000), description=_clean(description, 400))
+    prompt = (MISSED_PROMPT if kind == KIND_MISSED else PROMPT).format(result=_clean(result, 6000),
+                                                                        description=_clean(description, 400))
     payload = {
         "model": model,
         "temperature": 0,
@@ -238,6 +292,9 @@ def ask_ai(image_bytes, mime, description, result, model=MODEL, timeout=TIMEOUT)
     out = _json_of(content)
     if not out:
         return {"error": "bad_answer", "why": "the answer was not the expected JSON"}
+    if kind == KIND_MISSED:
+        return dict(missed_answer(out), area=_clean(out.get("area"), 20).lower(), score_change_needed=False,
+                    lab_was_right=False, model=model, seconds=round(time.time() - started, 1))
     return {"explanation": _clean(out.get("explanation")), "fix": _clean(out.get("fix")),
             "area": _clean(out.get("area"), 20).lower(), "score_change_needed": bool(out.get("score_change_needed")),
             "lab_was_right": bool(out.get("lab_was_right")), "model": model,
@@ -255,9 +312,9 @@ def ready_for_score(bug):
     return all(done for _, done in checklist(bug))
 
 
-def summary(bugs):
-    """A short line for the page: how many bugs in each state."""
+def summary(bugs, kind=None):
+    """A short line for the page: how many bugs in each state (of one kind when given)."""
     counts = {state: 0 for state in STATES}
-    for bug in bugs or []:
+    for bug in (of_kind(bugs, kind) if kind in KINDS else bugs) or []:
         counts[state_of(bug)] += 1
     return counts

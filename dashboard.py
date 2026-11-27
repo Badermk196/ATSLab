@@ -2781,6 +2781,7 @@ def run_check_reusing(pdf_bytes, filename, with_job, text, job_title=None):
 
 def check_and_store(inputs, gate=None):
     """Check the CV (and the previous version, if given) and keep the result with the inputs that made it."""
+    st.session_state.pop("check_error", None)
     try:
         with st.spinner("Checking the resume (a new job description is read by AI once, then saved)..."), \
                 (gate() if gate else contextlib.nullcontext()):
@@ -2794,10 +2795,12 @@ def check_and_store(inputs, gate=None):
                                           "swap": inputs.get("swap"), "inputs": inputs}
     except CheckError as e:
         st.session_state.pop("result", None)
+        st.session_state["check_error"] = str(e)           # the Admin page shows it again above the form
         st.error(str(e))
     except Exception as e:                    # anything unexpected: a clear message, not a stack trace
         st.session_state.pop("result", None)
-        st.error(f"Something went wrong while checking the resume: {type(e).__name__}: {e}")
+        st.session_state["check_error"] = f"Something went wrong while checking the resume: {type(e).__name__}: {e}"
+        st.error(st.session_state["check_error"])
 
 
 if __name__ == "__main__":      # streamlit runs this file as __main__; tests import it without drawing the page
